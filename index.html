@@ -730,10 +730,7 @@
     <section class="panel" id="panel-docs" role="tabpanel">
       <h2>2. Form sources</h2>
       <p class="hint">
-        Only forms <strong>TraceRoot fills</strong> (system + Export / Production in the portal).
-        External inbound docs (CRO, OBL, GD, …) are not listed here — tick what you
-        <em>look at</em> to fill each TraceRoot form. One card at a time, or
-        <strong>Use typical defaults</strong>.
+        For each form below, tick the documents or emails you use today to fill it.
       </p>
       <div class="src-progress" id="srcProgress" aria-live="polite">
         <span><strong id="srcProgressCount">0</strong> of <span id="srcProgressTotal">0</span> forms answered</span>
@@ -1371,7 +1368,7 @@
     {
       id: "pi", phase: "order", sno: "PI",
       title: "PI",
-      fills: "Open / final PI in TraceRoot — buyer, qty, prices, terms, packing, lines",
+      fills: "Buyer, qty, prices, terms, packing, product lines",
       typical: ["proforma_pdf", "sales_pi_email"],
       sources: [
         { id: "proforma_pdf", tag: "doc", label: "Proforma invoice PDF from Sales" },
@@ -1383,7 +1380,7 @@
     {
       id: "loading_date", phase: "order", sno: "Load date",
       title: "Estimated loading date",
-      fills: "Date Export sets in TraceRoot (drives all deadlines)",
+      fills: "Loading date that drives deadlines",
       typical: ["loading_date_email"],
       sources: [
         { id: "loading_date_email", tag: "email", label: "Sales / factory loading-date message" },
@@ -1394,7 +1391,7 @@
     {
       id: "commercial_invoice", phase: "order", sno: "CI",
       title: "Commercial invoice",
-      fills: "CI TraceRoot drafts / posts (header, consignee, lines, pallet type, SAP)",
+      fills: "Header, consignee, lines, weights, pallet type",
       typical: ["final_pi", "cro_pdf"],
       sources: [
         { id: "final_pi", tag: "doc", label: "Final approved PI" },
@@ -1406,7 +1403,7 @@
     {
       id: "gate_pass", phase: "load", sno: "Gate",
       title: "Gate pass / container details",
-      fills: "Production / Export enter container, seal, packages, weights in TraceRoot",
+      fills: "Container, seal, packages, qty, net/gross weight",
       typical: ["gate_pass", "container_whatsapp"],
       sources: [
         { id: "gate_pass", tag: "doc", label: "Factory outward gate pass" },
@@ -1418,7 +1415,7 @@
     {
       id: "customs_invoice", phase: "load", sno: "Customs inv",
       title: "Customs invoice",
-      fills: "Customs invoice TraceRoot generates for bank / clearing",
+      fills: "Packages, weights, values, marks for customs / bank",
       typical: ["final_pi", "gate_pass", "customs_template"],
       sources: [
         { id: "final_pi", tag: "doc", label: "Final PI" },
@@ -1430,7 +1427,7 @@
     {
       id: "fi_request", phase: "load", sno: "FI",
       title: "FI request",
-      fills: "Bank FI / FIA request TraceRoot fills (bank, IBAN, amounts)",
+      fills: "Bank, IBAN, amounts for FI / FIA request",
       typical: ["fi_request_xlsx", "bank_send_email"],
       sources: [
         { id: "fi_request_xlsx", tag: "doc", label: "HBL FI REQUEST Excel template" },
@@ -1443,7 +1440,7 @@
     {
       id: "fumigation", phase: "load", sno: "Fumigation",
       title: "Fumigation request / affidavit",
-      fills: "Request TraceRoot prepares for fumigator (wood pallets only)",
+      fills: "Affidavit / request for fumigator (wood pallets only)",
       typical: [],
       optional: true,
       sources: [
@@ -1456,7 +1453,7 @@
     {
       id: "draft_bl", phase: "bl", sno: "Draft BL",
       title: "Draft B/L (BL FORMAT)",
-      fills: "BL fields Export fills in TraceRoot / Word template before send to forwarder",
+      fills: "BL fields before you send to the forwarder",
       typical: ["gd_packet", "bl_format"],
       sources: [
         { id: "gd_packet", tag: "doc", label: "GD packet (customs inv + CRO + FIA + GD)" },
@@ -1469,7 +1466,7 @@
     {
       id: "packing_list", phase: "final", sno: "PL",
       title: "Packing list",
-      fills: "Packing list TraceRoot generates",
+      fills: "Packages, weights, marks",
       typical: ["gate_pass", "packing_template"],
       sources: [
         { id: "gate_pass", tag: "doc", label: "Gate pass" },
@@ -1481,7 +1478,7 @@
     {
       id: "ecoo", phase: "final", sno: "e-COO",
       title: "e-COO",
-      fills: "e-COO / certificate of origin TraceRoot prepares / files",
+      fills: "Certificate of origin fields",
       typical: ["ecoo_psw"],
       sources: [
         { id: "obl", tag: "doc", label: "OBL / HBL (for refs)" },
@@ -1493,7 +1490,7 @@
     {
       id: "isf", phase: "final", sno: "ISF",
       title: "ISF",
-      fills: "Flexport ISF worksheet TraceRoot fills — US only",
+      fills: "ISF parties, B/L, vessel, container, HTS — US only",
       typical: ["obl", "isf_sheet", "customer_master"],
       sources: [
         { id: "not_us", tag: "note", label: "Not used (no US buyers)" },
@@ -1507,7 +1504,7 @@
     {
       id: "customer_pack", phase: "final", sno: "Cust pack",
       title: "Customer document pack",
-      fills: "Assemble & send buyer pack TraceRoot prepares (incl. customer CI if different)",
+      fills: "Assemble and send the buyer’s document pack",
       typical: ["doc_bank", "pack_send_email"],
       sources: [
         { id: "doc_bank", tag: "doc", label: "Docs already on the shipment (CI, PL, OBL, e-COO, …)" },
@@ -1519,7 +1516,7 @@
     {
       id: "bank_covering_letter", phase: "close", sno: "Bank set",
       title: "Bank covering letter / physical set",
-      fills: "Covering letter + print checklist TraceRoot prepares for bank",
+      fills: "Covering letter + print checklist for the bank",
       typical: ["covering_letter", "ci", "packing_list", "obl_scan", "gd"],
       sources: [
         { id: "covering_letter", tag: "doc", label: "Covering letter template" },
@@ -1532,7 +1529,7 @@
     {
       id: "vessel_update", phase: "close", sno: "Vessel",
       title: "Vessel / ETA update",
-      fills: "Sail / ETA message TraceRoot drafts to customer",
+      fills: "Sail / ETA message to the customer",
       typical: ["forwarder_eta_email"],
       sources: [
         { id: "carrier_portal", tag: "note", label: "Carrier tracking website / portal" },
@@ -1543,7 +1540,7 @@
     {
       id: "payment_ar", phase: "close", sno: "AR",
       title: "Payment / AR",
-      fills: "Reminders and bank confirm replies TraceRoot drafts",
+      fills: "Payment reminders and bank confirm replies",
       typical: ["bank_payment_email", "bank_confirm_reply"],
       sources: [
         { id: "ar_reminder_email", tag: "email", label: "Payment reminder template" },
@@ -2723,9 +2720,9 @@
           '<span class="chev" aria-hidden="true">▾</span>' +
           "</button>" +
           '<div class="step-body">' +
-          '<p class="fills"><strong>This form captures:</strong> ' + escapeHtml(step.fills) + "</p>" +
+          '<p class="fills"><strong>What this form covers:</strong> ' + escapeHtml(step.fills) + "</p>" +
           optNote +
-          '<p class="ask-label">What do you use today to fill this form? (tick all that apply)</p>' +
+          '<p class="ask-label">What do you use today? (tick all that apply)</p>' +
           '<div class="check-grid">' + checks + "</div>" +
           '<div class="grid" style="margin-top:8px">' +
           '<label class="field full" style="flex-direction:row;align-items:center;gap:8px;font-weight:500">' +
