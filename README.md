@@ -30,8 +30,9 @@ Do **not** connect the SilverBirch-FE monorepo.
 2. Fill **Form sources** — one form at a time (PI, CRO, customs invoice, FI request, …), or **Use typical defaults**.
 3. Fill **Company**, **Customers**, **Products**, **Partners**.
 4. Optional: CSV templates for customers/products → Import CSV.
-5. **Download JSON** → email TraceRoot (plus sample files).
-6. Optional: **Print**.
+5. Open **Send pack** — checklist of documents / emails / screen recordings inferred from your answers.
+6. **Download JSON + checklist** → email TraceRoot with the listed sample files.
+7. Optional: **Print**.
 
 ## JSON shape
 

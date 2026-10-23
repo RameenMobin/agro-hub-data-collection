@@ -268,6 +268,32 @@
     .tag-email { background: #e1f9f0; color: #0b7a57; }
     .tag-note { background: var(--soft); color: #47688B; }
     .legend { display: flex; flex-wrap: wrap; gap: 10px 14px; margin: 0 0 12px; font-size: 13px; }
+    .pack-group { margin: 0 0 18px; }
+    .pack-group h3 { margin: 0 0 8px; font: 600 14px "Inter Tight", sans-serif; color: var(--navy); }
+    .pack-group .pack-count {
+      font: 500 12px "IBM Plex Mono", monospace; color: var(--muted); margin-left: 6px;
+    }
+    .pack-list { list-style: none; margin: 0; padding: 0; }
+    .pack-list li {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 10px 12px; margin: 0 0 6px;
+      border: 1px solid var(--line); border-radius: 8px; background: #fff;
+      font-size: 13.5px; color: var(--ink);
+    }
+    .pack-list li .kind {
+      flex-shrink: 0; font: 500 10px/1 "IBM Plex Mono", monospace;
+      padding: 4px 6px; border-radius: 3px; margin-top: 1px;
+    }
+    .pack-list .kind-doc { background: #e7f1fe; color: var(--blue); }
+    .pack-list .kind-email { background: #e1f9f0; color: #0b7a57; }
+    .pack-list .kind-recording { background: #fef3e2; color: #9a5b00; }
+    .pack-list .kind-note { background: var(--soft); color: #47688B; }
+    .pack-list .meta { display: block; margin-top: 3px; font-size: 12px; color: var(--muted); }
+    .pack-empty {
+      padding: 14px; border: 1px dashed var(--line); border-radius: 8px;
+      color: var(--muted); font-size: 13.5px; background: var(--soft);
+    }
+    .pack-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
     .csv-box {
       margin: 12px 0; padding: 12px; border-radius: 8px;
       background: var(--warn-soft); border-left: 3px solid var(--warn); font-size: 13px;
@@ -303,7 +329,8 @@
       </label>
       <button type="button" class="ghost" id="btnPrint">Print</button>
       <button type="button" class="ghost" id="btnClear">Clear draft</button>
-      <button type="button" class="pri" id="btnJson">Download JSON</button>
+      <button type="button" class="ghost" id="btnPack" style="border-color:#7eb8d4;color:#e8f4fc">Send pack</button>
+      <button type="button" class="pri" id="btnJson">Download JSON + checklist</button>
     </div>
   </div>
 
@@ -329,6 +356,7 @@
       <button type="button" role="tab" aria-selected="false" data-tab="customers">3. Customers</button>
       <button type="button" role="tab" aria-selected="false" data-tab="products">4. Products</button>
       <button type="button" role="tab" aria-selected="false" data-tab="partners">5. Partners</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="send">6. Send pack</button>
     </nav>
 
     <!-- COMPANY -->
@@ -603,9 +631,27 @@
       </label>
     </section>
 
+    <!-- SEND PACK — generated from answers -->
+    <section class="panel" id="panel-send" role="tabpanel">
+      <h2>6. What to send TraceRoot</h2>
+      <p class="hint">
+        Built from your Form sources and Partners answers. Compile these samples,
+        then download the JSON and email everything together.
+      </p>
+      <div class="csv-box" id="packSummary">
+        Fill Form sources and Partners first — this list updates as you go.
+      </div>
+      <div class="pack-actions">
+        <button type="button" class="pri" id="btnDownloadAll">Download JSON + checklist</button>
+        <button type="button" id="btnChecklistOnly">Download checklist only (.txt)</button>
+        <button type="button" class="ghost" id="btnCopyEmail" style="border-color:var(--line);color:var(--ink);background:#fff">Copy email draft</button>
+      </div>
+      <div id="samplePackRoot"></div>
+    </section>
+
     <p class="foot">
-      When finished: <strong>Download JSON</strong> → email to TraceRoot with sample files
-      (PDFs, email examples, and any Excel masters).
+      When finished: open <strong>6. Send pack</strong> → download JSON + checklist →
+      email TraceRoot with the listed sample files.
     </p>
   </div>
 
@@ -1364,6 +1410,7 @@
       document.querySelectorAll(".panel").forEach(function (p) {
         p.classList.toggle("active", p.id === "panel-" + id);
       });
+      if (id === "send") renderSamplePack();
     });
   });
 
@@ -1651,6 +1698,7 @@
     if (t.type === "checkbox") return;
     state.partners.forwarders[i][k] = t.value;
     if (k === "name") refreshForwarderDatalist();
+    if (document.getElementById("panel-send").classList.contains("active")) renderSamplePack();
     scheduleSave();
   });
   document.getElementById("forwardersList").addEventListener("change", function (e) {
@@ -1672,6 +1720,7 @@
       }
       renderForwarders();
     }
+    if (document.getElementById("panel-send").classList.contains("active")) renderSamplePack();
     scheduleSave();
   });
 
@@ -2356,11 +2405,13 @@
         }
       }
       updateSrcProgress();
+      if (document.getElementById("panel-send").classList.contains("active")) renderSamplePack();
       scheduleSave();
       return;
     }
     if (t.getAttribute("data-src-sample")) {
       state.formSources[t.getAttribute("data-src-sample")].canSendSample = !!t.checked;
+      if (document.getElementById("panel-send").classList.contains("active")) renderSamplePack();
       scheduleSave();
     }
   });
@@ -2400,6 +2451,312 @@
     renderCustomers();
     renderProducts();
     renderDocs();
+    renderSamplePack();
+  }
+
+  /* ---- send pack (samples checklist from answers) ---- */
+  var SKIP_SAMPLE_SOURCE_IDS = {
+    not_applicable: true,
+    not_us: true,
+    sap_screen: true,
+    production_typed: true,
+    psw_fia: true,
+    psw_portal: true,
+    carrier_portal: true,
+    customer_master: true,
+    forwarder_portal: true,
+    doc_bank: true
+  };
+
+  function buildSamplePack() {
+    ensureFormSources();
+    ensurePartners();
+    var byKey = {};
+    function addItem(item) {
+      var key = item.kind + "::" + (item.sourceId || item.label);
+      if (byKey[key]) {
+        item.forms.forEach(function (f) {
+          if (byKey[key].forms.indexOf(f) < 0) byKey[key].forms.push(f);
+        });
+        return;
+      }
+      byKey[key] = item;
+    }
+
+    FORM_SOURCE_STEPS.forEach(function (step) {
+      var fs = state.formSources[step.id];
+      if (!fs) return;
+      var answered = stepIsAnswered(step.id);
+      if (!answered) return;
+
+      (fs.sources || []).forEach(function (srcId) {
+        if (SKIP_SAMPLE_SOURCE_IDS[srcId]) return;
+        var src = step.sources.find(function (s) { return s.id === srcId; });
+        if (!src) return;
+        var kind = src.tag === "email" ? "email" : src.tag === "note" ? "note" : "document";
+        if (kind === "note") {
+          addItem({
+            kind: "note",
+            sourceId: srcId,
+            label: src.label,
+            forms: [step.title],
+            detail: "No file needed — you marked this as a system / portal source"
+          });
+          return;
+        }
+        addItem({
+          kind: kind,
+          sourceId: srcId,
+          label: src.label,
+          forms: [step.title],
+          detail: kind === "email"
+            ? "Email / chat sample or template (.eml, .msg, PDF, or screenshot)"
+            : "Document sample (PDF, Word, Excel, or scan)"
+        });
+      });
+
+      if (fs.otherSource && fs.otherSource.trim()) {
+        addItem({
+          kind: "document",
+          sourceId: "other:" + step.id,
+          label: "Other source — " + fs.otherSource.trim(),
+          forms: [step.title],
+          detail: "Whatever you use that wasn’t in the list"
+        });
+      }
+
+      if (fs.canSendSample) {
+        // already covered by sources; keep as reminder if they only ticked sample with no sources
+        if (!(fs.sources || []).length && !(fs.otherSource && fs.otherSource.trim())) {
+          addItem({
+            kind: "document",
+            sourceId: "sample:" + step.id,
+            label: "Sample for " + step.title,
+            forms: [step.title],
+            detail: "You marked that you can send a sample for this form"
+          });
+        }
+      }
+    });
+
+    (state.partners.forwarders || []).forEach(function (f) {
+      var name = (f.name || "").trim() || "Unnamed forwarder";
+      if (f.blPath === "manual") {
+        addItem({
+          kind: "document",
+          sourceId: "bl_template:" + name,
+          label: "BL FORMAT template — " + name,
+          forms: ["Partners · manual B/L"],
+          detail: f.canSendBlTemplate
+            ? "Blank or filled Word/PDF template (you confirmed you can send)"
+            : "Blank or filled Word/PDF template for this forwarder"
+        });
+      }
+      if (f.blPath === "gama") {
+        if (f.gamaFieldsNotes && f.gamaFieldsNotes.trim()) {
+          addItem({
+            kind: "note",
+            sourceId: "gama_fields:" + name,
+            label: "Gama fields already noted in JSON — " + name,
+            forms: ["Partners · Gama"],
+            detail: "Included in your download; screen recording still helps"
+          });
+        } else {
+          addItem({
+            kind: "note",
+            sourceId: "gama_fields_needed:" + name,
+            label: "List Gama portal fields for " + name,
+            forms: ["Partners · Gama"],
+            detail: "Fill “What do you fill in the portal?” on the Partners tab, or cover it in a recording"
+          });
+        }
+        addItem({
+          kind: "recording",
+          sourceId: "gama_rec:" + name,
+          label: "Gama portal screen recording / screenshots — " + name,
+          forms: ["Partners · Gama"],
+          detail: f.canSendScreenRecording
+            ? "Typical booking entry walkthrough (you confirmed you can send)"
+            : "Short Loom / MP4 / screenshots of a typical Gama entry"
+        });
+      }
+      if (f.blPath === "manual" || f.blPath === "gama" || f.canSendCheckingCopy) {
+        addItem({
+          kind: "email",
+          sourceId: "checking:" + name,
+          label: "Checking-copy sample — " + name,
+          forms: ["Partners · checking copy"],
+          detail: f.canSendCheckingCopy
+            ? "Email or PDF of a checking copy before Approve (you confirmed)"
+            : "Email or PDF of a checking copy before you Approve"
+        });
+      }
+    });
+
+    (state.customers || []).forEach(function (c) {
+      if (c.customerCiDifferent === "different" && (c.name || "").trim()) {
+        addItem({
+          kind: "document",
+          sourceId: "cust_ci:" + c.name,
+          label: "Customer-specific CI layout — " + c.name,
+          forms: ["Customers"],
+          detail: "You marked this buyer’s CI as different from the bank CI"
+        });
+      }
+    });
+
+    if (state.documents && state.documents.extraNotes && String(state.documents.extraNotes).trim()) {
+      addItem({
+        kind: "note",
+        sourceId: "extra_notes",
+        label: "Extra notes already in JSON",
+        forms: ["Form sources"],
+        detail: "Included in your download"
+      });
+    }
+
+    var items = Object.keys(byKey).map(function (k) { return byKey[k]; });
+    var order = { document: 0, email: 1, recording: 2, note: 3 };
+    items.sort(function (a, b) {
+      return (order[a.kind] - order[b.kind]) || a.label.localeCompare(b.label);
+    });
+    return {
+      generatedAt: new Date().toISOString(),
+      counts: {
+        document: items.filter(function (i) { return i.kind === "document"; }).length,
+        email: items.filter(function (i) { return i.kind === "email"; }).length,
+        recording: items.filter(function (i) { return i.kind === "recording"; }).length,
+        note: items.filter(function (i) { return i.kind === "note"; }).length,
+        total: items.length
+      },
+      items: items
+    };
+  }
+
+  function renderSamplePack() {
+    var root = document.getElementById("samplePackRoot");
+    var summary = document.getElementById("packSummary");
+    if (!root) return;
+    var pack = buildSamplePack();
+    state.samplePack = pack;
+
+    var c = pack.counts;
+    if (summary) {
+      summary.innerHTML = c.total
+        ? ("Your pack: <strong>" + c.document + "</strong> document(s), <strong>" +
+          c.email + "</strong> email(s), <strong>" + c.recording +
+          "</strong> recording(s)" + (c.note ? ", " + c.note + " note(s)" : "") +
+          ". Download JSON + checklist, then attach these files in one email.")
+        : "No samples yet — answer Form sources (and add forwarders on Partners). This list builds automatically.";
+    }
+
+    function groupHtml(title, kind, emptyMsg) {
+      var list = pack.items.filter(function (i) { return i.kind === kind; });
+      var html = '<div class="pack-group"><h3>' + escapeHtml(title) +
+        '<span class="pack-count">' + list.length + "</span></h3>";
+      if (!list.length) {
+        html += '<p class="pack-empty">' + escapeHtml(emptyMsg) + "</p></div>";
+        return html;
+      }
+      html += '<ul class="pack-list">';
+      list.forEach(function (item) {
+        var kindLabel = kind === "document" ? "Document" : kind === "email" ? "Email" :
+          kind === "recording" ? "Recording" : "Note";
+        html += "<li><span class=\"kind kind-" + kind + "\">" + kindLabel + "</span><span>" +
+          "<strong>" + escapeHtml(item.label) + "</strong>" +
+          '<span class="meta">' + escapeHtml(item.detail || "") +
+          (item.forms && item.forms.length ? " · For: " + escapeHtml(item.forms.join(", ")) : "") +
+          "</span></span></li>";
+      });
+      html += "</ul></div>";
+      return html;
+    }
+
+    root.innerHTML =
+      groupHtml("Documents / files", "document", "No document samples inferred yet.") +
+      groupHtml("Emails / chat samples", "email", "No email samples inferred yet.") +
+      groupHtml("Screen recordings", "recording", "No recordings needed unless you use Gama (Seagold).") +
+      groupHtml("Notes (no file)", "note", "None.");
+  }
+
+  function samplePackToText(pack) {
+    pack = pack || buildSamplePack();
+    var lines = [
+      "Agro Hub × TraceRoot — sample pack checklist",
+      "Generated: " + (pack.generatedAt || new Date().toISOString()),
+      "Workspace: " + (state.workspace || state.company.legalName || "(unnamed)"),
+      "",
+      "Attach these with your JSON download and email TraceRoot.",
+      ""
+    ];
+    function section(title, kind) {
+      var list = pack.items.filter(function (i) { return i.kind === kind; });
+      lines.push("=== " + title + " (" + list.length + ") ===");
+      if (!list.length) {
+        lines.push("(none)");
+        lines.push("");
+        return;
+      }
+      list.forEach(function (item, idx) {
+        lines.push((idx + 1) + ". [ ] " + item.label);
+        if (item.detail) lines.push("    " + item.detail);
+        if (item.forms && item.forms.length) lines.push("    For: " + item.forms.join(", "));
+      });
+      lines.push("");
+    }
+    section("DOCUMENTS", "document");
+    section("EMAILS / CHAT", "email");
+    section("SCREEN RECORDINGS", "recording");
+    section("NOTES (no file)", "note");
+    lines.push("Also attach: agro-hub-data-….json (from Download JSON + checklist)");
+    lines.push("");
+    return lines.join("\n");
+  }
+
+  function samplePackEmailDraft(pack) {
+    pack = pack || buildSamplePack();
+    var c = pack.counts;
+    var body = [
+      "Hi TraceRoot,",
+      "",
+      "Please find attached our Agro Hub export desk data collection JSON and sample pack.",
+      "",
+      "Checklist summary: " + c.document + " document(s), " + c.email +
+        " email(s), " + c.recording + " recording(s).",
+      "",
+      "Samples included / coming:",
+      ""
+    ];
+    pack.items.filter(function (i) { return i.kind !== "note"; }).forEach(function (item) {
+      body.push("- [" + item.kind + "] " + item.label);
+    });
+    body.push("");
+    body.push("Thanks,");
+    body.push("Agro Hub Export");
+    return body.join("\n");
+  }
+
+  function downloadJsonAndChecklist() {
+    collectFromDom();
+    ensurePartners();
+    ensureFormSources();
+    var pack = buildSamplePack();
+    state.samplePack = pack;
+    var base = "agro-hub-data-" + slugify(state.company.legalName || state.workspace || "draft") +
+      "-" + new Date().toISOString().slice(0, 10);
+    downloadText(base + ".json", JSON.stringify(state, null, 2), "application/json");
+    downloadText(base + "-sample-checklist.txt", samplePackToText(pack), "text/plain");
+    persist();
+    setStatus("Downloaded JSON + checklist (" + pack.counts.total + " items)", true);
+    renderSamplePack();
+  }
+
+  function goToSendPack() {
+    var tabBtn = document.querySelector('.tabs [data-tab="send"]');
+    if (tabBtn) tabBtn.click();
+    renderSamplePack();
+    var panel = document.getElementById("panel-send");
+    if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   /* ---- CSV ---- */
@@ -2522,13 +2879,33 @@
     reader.readAsText(file);
   });
 
-  /* ---- JSON / clear / print ---- */
+  /* ---- JSON / clear / print / send pack ---- */
   document.getElementById("btnJson").addEventListener("click", function () {
+    downloadJsonAndChecklist();
+    goToSendPack();
+  });
+  document.getElementById("btnPack").addEventListener("click", goToSendPack);
+  document.getElementById("btnDownloadAll").addEventListener("click", downloadJsonAndChecklist);
+  document.getElementById("btnChecklistOnly").addEventListener("click", function () {
     collectFromDom();
-    var name = "agro-hub-data-" + slugify(state.company.legalName || state.workspace || "draft") +
-      "-" + new Date().toISOString().slice(0, 10) + ".json";
-    downloadText(name, JSON.stringify(state, null, 2), "application/json");
-    persist();
+    var pack = buildSamplePack();
+    var base = "agro-hub-sample-checklist-" + slugify(state.workspace || "draft") +
+      "-" + new Date().toISOString().slice(0, 10) + ".txt";
+    downloadText(base, samplePackToText(pack), "text/plain");
+    setStatus("Downloaded checklist (" + pack.counts.total + " items)", true);
+  });
+  document.getElementById("btnCopyEmail").addEventListener("click", function () {
+    collectFromDom();
+    var text = samplePackEmailDraft(buildSamplePack());
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        setStatus("Email draft copied", true);
+      }).catch(function () {
+        window.prompt("Copy email draft:", text);
+      });
+    } else {
+      window.prompt("Copy email draft:", text);
+    }
   });
   document.getElementById("btnPrint").addEventListener("click", function () { window.print(); });
   document.getElementById("btnClear").addEventListener("click", function () {
