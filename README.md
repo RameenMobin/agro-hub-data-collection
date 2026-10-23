@@ -56,7 +56,29 @@ Do **not** connect the SilverBirch-FE monorepo.
   ],
   "banks": [],
   "contacts": {},
-  "partners": {},
+  "partners": {
+    "forwarders": [
+      {
+        "name": "Seagold",
+        "contact": "",
+        "blPath": "gama",
+        "gamaFieldsNotes": "",
+        "canSendScreenRecording": false,
+        "canSendCheckingCopy": true,
+        "checkingCopyNotes": ""
+      },
+      {
+        "name": "",
+        "blPath": "manual",
+        "canSendBlTemplate": true,
+        "blTemplateNotes": "",
+        "canSendCheckingCopy": true
+      }
+    ],
+    "clearingName": "",
+    "fumigatorName": "",
+    "isfAgentName": ""
+  },
   "defaults": {},
   "customers": [],
   "products": [],

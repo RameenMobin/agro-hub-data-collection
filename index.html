@@ -378,6 +378,10 @@
       <datalist id="lov-incoterms"></datalist>
       <datalist id="lov-freight"></datalist>
       <datalist id="lov-unit"></datalist>
+      <datalist id="lov-fwd-known">
+        <option value="Seagold"></option>
+      </datalist>
+      <datalist id="lov-forwarders"></datalist>
 
       <h3>ISF parties (when Agro Hub is seller)</h3>
       <p class="hint">
@@ -536,25 +540,20 @@
     <!-- PARTNERS -->
     <section class="panel" id="panel-partners" role="tabpanel">
       <h2>5. External partners</h2>
-      <p class="hint">Forwarders, clearing agent, fumigator, ISF agent.</p>
+      <p class="hint">
+        Add every forwarder you use. Only <strong>Seagold</strong> uses the Gama portal;
+        every other forwarder is manual — you fill their B/L template and email it.
+        For each forwarder we also need a <strong>checking-copy</strong> sample (email / PDF).
+      </p>
+
+      <h3>Forwarders</h3>
+      <div id="forwardersList"></div>
+      <div class="row-actions">
+        <button type="button" id="addForwarder">+ Add forwarder</button>
+      </div>
+
+      <h3>Other partners</h3>
       <div class="grid">
-        <label class="field">Primary forwarder — name
-          <input data-path="partners.forwarderName" />
-        </label>
-        <label class="field">Forwarder — email / phone
-          <input data-path="partners.forwarderContact" />
-        </label>
-        <label class="field">Default B/L path for this forwarder
-          <select data-path="partners.forwarderBlPath">
-            <option value="">—</option>
-            <option value="portal">Portal</option>
-            <option value="manual">Email / manual</option>
-            <option value="mixed">Mixed (depends on customer)</option>
-          </select>
-        </label>
-        <label class="field full">Forwarder notes
-          <input data-path="partners.forwarderNotes" placeholder="e.g. Seagold email; Gama portal name" />
-        </label>
         <label class="field">Clearing agent — name
           <input data-path="partners.clearingName" />
         </label>
@@ -1019,10 +1018,10 @@
       typical: ["gd_packet", "checking_copy_email"],
       sources: [
         { id: "gd_packet", tag: "doc", label: "GD packet (customs inv + CRO + FIA + GD)" },
-        { id: "bl_format", tag: "doc", label: "BL FORMAT Word template (manual forwarders)" },
-        { id: "checking_copy_email", tag: "email", label: "Checking-copy email from forwarder / line" },
+        { id: "bl_format", tag: "doc", label: "BL FORMAT Word template (manual forwarders — see Partners)" },
+        { id: "checking_copy_email", tag: "email", label: "Checking-copy email / PDF (sample from your team)" },
         { id: "approve_email", tag: "email", label: "Your “Approved” / correction reply" },
-        { id: "forwarder_portal", tag: "note", label: "Forwarder portal (e.g. Gama) — no file" }
+        { id: "forwarder_portal", tag: "note", label: "Gama portal (Seagold) — see Partners for fields / recording" }
       ]
     },
     {
@@ -1173,6 +1172,28 @@
     };
   };
 
+  var emptyForwarder = function () {
+    return {
+      name: "",
+      contact: "",
+      blPath: "", // "manual" | "gama"
+      canSendBlTemplate: false,
+      blTemplateNotes: "",
+      gamaFieldsNotes: "",
+      canSendScreenRecording: false,
+      canSendCheckingCopy: false,
+      checkingCopyNotes: "",
+      notes: ""
+    };
+  };
+
+  var defaultForwarders = function () {
+    var seagold = emptyForwarder();
+    seagold.name = "Seagold";
+    seagold.blPath = "gama";
+    return [seagold, emptyForwarder()];
+  };
+
   var emptyIsfParty = function (role) {
     return {
       role: role || "other",
@@ -1214,7 +1235,7 @@
     isfParties: defaultIsfParties(),
     banks: [],
     contacts: {},
-    partners: {},
+    partners: { forwarders: defaultForwarders() },
     defaults: {},
     customers: [emptyCustomer()],
     products: [{ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" }],
@@ -1323,6 +1344,7 @@
       if (!state.documents) state.documents = {};
       if (!state.formSources) state.formSources = {};
       ensureIsfParties();
+      ensurePartners();
       ensureFormSources();
       renderAll();
       setStatus("Restored draft", true);
@@ -1476,6 +1498,180 @@
     state.isfParties.splice(+e.target.getAttribute("data-rm-isf"), 1);
     if (!state.isfParties.length) state.isfParties = defaultIsfParties();
     renderIsfParties();
+    scheduleSave();
+  });
+
+  /* ---- forwarders / partners ---- */
+  function ensurePartners() {
+    if (!state.partners) state.partners = {};
+    var p = state.partners;
+    if (!Array.isArray(p.forwarders)) p.forwarders = [];
+    // Migrate legacy single-forwarder fields
+    if (!p.forwarders.length && (p.forwarderName || p.forwarderContact || p.forwarderBlPath)) {
+      var f = emptyForwarder();
+      f.name = p.forwarderName || "";
+      f.contact = p.forwarderContact || "";
+      var path = p.forwarderBlPath || "";
+      if (path === "portal") f.blPath = /seagold/i.test(f.name) ? "gama" : "manual";
+      else if (path === "manual" || path === "gama") f.blPath = path;
+      else if (path === "mixed") f.blPath = "manual";
+      f.notes = p.forwarderNotes || "";
+      p.forwarders = [f];
+      delete p.forwarderName;
+      delete p.forwarderContact;
+      delete p.forwarderBlPath;
+      delete p.forwarderNotes;
+    }
+    if (!p.forwarders.length) p.forwarders = defaultForwarders();
+  }
+
+  function refreshForwarderDatalist() {
+    var dl = document.getElementById("lov-forwarders");
+    if (!dl) {
+      dl = document.createElement("datalist");
+      dl.id = "lov-forwarders";
+      document.body.appendChild(dl);
+    }
+    var names = (state.partners.forwarders || [])
+      .map(function (f) { return (f.name || "").trim(); })
+      .filter(Boolean);
+    dl.innerHTML = names.map(function (n) {
+      return "<option value=\"" + escapeHtml(n) + "\"></option>";
+    }).join("");
+  }
+
+  function renderForwarders() {
+    ensurePartners();
+    var root = document.getElementById("forwardersList");
+    root.innerHTML = "";
+    state.partners.forwarders.forEach(function (f, i) {
+      var card = document.createElement("div");
+      card.className = "cust-card";
+      var isGama = f.blPath === "gama";
+      var isManual = f.blPath === "manual";
+      var pathAsk = "";
+      if (isManual) {
+        pathAsk =
+          '<div class="csv-box" style="grid-column:1/-1;margin:0">' +
+          "<strong>Manual B/L path</strong> — Agro Hub fills this forwarder’s BL template and emails it." +
+          '<label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;font-weight:500;cursor:pointer">' +
+          '<input type="checkbox" data-fwd="' + i + '" data-k="canSendBlTemplate"' +
+          (f.canSendBlTemplate ? " checked" : "") + " />" +
+          "We can send a sample of their blank / filled BL FORMAT template (Word / PDF)</label>" +
+          '<label class="field full" style="margin-top:6px">Template notes' +
+          '<input data-fwd="' + i + '" data-k="blTemplateNotes" placeholder="e.g. filename, which fields you type vs leave blank…" value="' +
+          escapeHtml(f.blTemplateNotes || "") + '" /></label>' +
+          "</div>";
+      } else if (isGama) {
+        pathAsk =
+          '<div class="csv-box" style="grid-column:1/-1;margin:0;background:#e8f4fc;border-left-color:var(--cyan)">' +
+          "<strong>Gama portal (Seagold)</strong> — no Word template; you key data into Gama." +
+          '<label class="field full" style="margin-top:8px">What do you fill in the portal?' +
+          '<textarea data-fwd="' + i + '" data-k="gamaFieldsNotes" rows="3" placeholder="List fields / screens: shipper, consignee, notify, cargo, container, freight…">' +
+          escapeHtml(f.gamaFieldsNotes || "") + "</textarea></label>" +
+          '<label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;font-weight:500;cursor:pointer">' +
+          '<input type="checkbox" data-fwd="' + i + '" data-k="canSendScreenRecording"' +
+          (f.canSendScreenRecording ? " checked" : "") + " />" +
+          "We can send a screen recording / screenshots of a typical Gama booking entry</label>" +
+          "</div>";
+      } else {
+        pathAsk =
+          '<p class="hint" style="grid-column:1/-1;margin:0">Pick a B/L path to see what sample we need for this forwarder.</p>';
+      }
+
+      card.innerHTML =
+        '<div class="head"><strong>Forwarder ' + (i + 1) +
+        (f.name ? " — " + escapeHtml(f.name) : "") +
+        '</strong><button type="button" class="rm" data-rm-fwd="' + i + '">Remove</button></div>' +
+        '<div class="grid">' +
+        '<label class="field">Name' +
+        '<input data-fwd="' + i + '" data-k="name" list="lov-fwd-known" placeholder="e.g. Seagold" /></label>' +
+        '<label class="field">Email / phone' +
+        '<input data-fwd="' + i + '" data-k="contact" /></label>' +
+        '<label class="field">B/L path' +
+        '<select data-fwd="' + i + '" data-k="blPath">' +
+        '<option value="">—</option>' +
+        '<option value="gama">Gama portal (Seagold only)</option>' +
+        '<option value="manual">Manual — BL template + email</option>' +
+        "</select></label>" +
+        pathAsk +
+        '<div class="field full" style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff">' +
+        "<strong style=\"font-size:13px\">Checking copy sample</strong>" +
+        '<p class="hint" style="margin:4px 0 8px">Example checking-copy email / PDF from this forwarder or line (what you receive before you Approve).</p>' +
+        '<label style="display:flex;gap:8px;align-items:flex-start;font-weight:500;cursor:pointer">' +
+        '<input type="checkbox" data-fwd="' + i + '" data-k="canSendCheckingCopy"' +
+        (f.canSendCheckingCopy ? " checked" : "") + " />" +
+        "We can send a checking-copy sample for this forwarder</label>" +
+        '<label class="field full" style="margin-top:6px">Checking-copy notes' +
+        '<input data-fwd="' + i + '" data-k="checkingCopyNotes" placeholder="e.g. from Seagold / MSC line; redacted OK" /></label>' +
+        "</div>" +
+        '<label class="field full">Other notes' +
+        '<input data-fwd="' + i + '" data-k="notes" placeholder="Optional" /></label>' +
+        "</div>";
+      root.appendChild(card);
+      card.querySelectorAll("[data-fwd]").forEach(function (el) {
+        var k = el.getAttribute("data-k");
+        if (el.type === "checkbox") return;
+        if (el.tagName === "SELECT") {
+          el.value = f[k] || "";
+          return;
+        }
+        if (el.tagName === "TEXTAREA") {
+          el.value = f[k] || "";
+          return;
+        }
+        el.value = f[k] || "";
+      });
+    });
+    refreshForwarderDatalist();
+  }
+
+  document.getElementById("addForwarder").addEventListener("click", function () {
+    collectFromDom();
+    ensurePartners();
+    state.partners.forwarders.push(emptyForwarder());
+    renderForwarders();
+    scheduleSave();
+  });
+  document.getElementById("forwardersList").addEventListener("click", function (e) {
+    if (!e.target.hasAttribute("data-rm-fwd")) return;
+    collectFromDom();
+    ensurePartners();
+    state.partners.forwarders.splice(+e.target.getAttribute("data-rm-fwd"), 1);
+    if (!state.partners.forwarders.length) state.partners.forwarders = [emptyForwarder()];
+    renderForwarders();
+    scheduleSave();
+  });
+  document.getElementById("forwardersList").addEventListener("input", function (e) {
+    var t = e.target;
+    if (!t.getAttribute("data-fwd")) return;
+    ensurePartners();
+    var i = +t.getAttribute("data-fwd");
+    var k = t.getAttribute("data-k");
+    if (t.type === "checkbox") return;
+    state.partners.forwarders[i][k] = t.value;
+    if (k === "name") refreshForwarderDatalist();
+    scheduleSave();
+  });
+  document.getElementById("forwardersList").addEventListener("change", function (e) {
+    var t = e.target;
+    if (!t.getAttribute("data-fwd")) return;
+    ensurePartners();
+    var i = +t.getAttribute("data-fwd");
+    var k = t.getAttribute("data-k");
+    if (t.type === "checkbox") {
+      state.partners.forwarders[i][k] = !!t.checked;
+      scheduleSave();
+      return;
+    }
+    state.partners.forwarders[i][k] = t.value;
+    if (k === "blPath" || k === "name") {
+      // Seagold hint: auto-pick Gama when name looks like Seagold
+      if (k === "name" && /seagold/i.test(t.value) && !state.partners.forwarders[i].blPath) {
+        state.partners.forwarders[i].blPath = "gama";
+      }
+      renderForwarders();
+    }
     scheduleSave();
   });
 
@@ -1633,9 +1829,13 @@
         fieldFull("importerOfRecord", "Importer of record (name + EIN)", i) +
         field("consigneeNumber", "Consignee number(s)", i) +
         field("isfSendToEmail", "ISF send-to email", i, "email") +
-        field("forwarder", "Forwarder for this customer", i) +
+        '<label class="field">Forwarder for this customer' +
+        '<input data-cust="' + i + '" data-k="forwarder" list="lov-forwarders" placeholder="Pick from Partners" /></label>' +
         '<label class="field">B/L path<select data-cust="' + i + '" data-k="blPath">' +
-        '<option value="">—</option><option value="portal">Portal</option><option value="manual">Email / manual</option></select></label>' +
+        '<option value="">—</option>' +
+        '<option value="gama">Gama portal (Seagold)</option>' +
+        '<option value="manual">Manual — fill BL template &amp; email</option>' +
+        '<option value="portal">Other portal</option></select></label>' +
         '<label class="field">Customer CI vs bank CI<select data-cust="' + i + '" data-k="customerCiDifferent">' +
         '<option value="">—</option><option value="same">Same</option><option value="different">Different — will attach sample</option></select></label>' +
         '<div class="field full"><span style="font-size:12px;font-weight:600;color:var(--ink)">Documents in customer pack</span>' +
@@ -2196,6 +2396,7 @@
     refreshCommodityDatalist();
     renderIsfParties();
     renderBanks();
+    renderForwarders();
     renderCustomers();
     renderProducts();
     renderDocs();
@@ -2336,7 +2537,7 @@
     state = {
       version: 1, kind: KIND, workspace: wsInput.value || "",
       company: {}, isfParties: defaultIsfParties(),
-      banks: [], contacts: {}, partners: {}, defaults: {},
+      banks: [], contacts: {}, partners: { forwarders: defaultForwarders() }, defaults: {},
       customers: [emptyCustomer()],
       products: [{ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" }],
       formSources: {},
