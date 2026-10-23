@@ -27,7 +27,7 @@ Do **not** connect the SilverBirch-FE monorepo.
 ## Client workflow
 
 1. Open the Vercel URL.
-2. Fill **Form sources** — one step at a time (or **Use typical defaults**), which document/email fills each form today.
+2. Fill **Form sources** — one form at a time (PI, CRO, customs invoice, FI request, …), or **Use typical defaults**.
 3. Fill **Company**, **Customers**, **Products**, **Partners**.
 4. Optional: CSV templates for customers/products → Import CSV.
 5. **Download JSON** → email TraceRoot (plus sample files).

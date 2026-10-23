@@ -581,14 +581,14 @@
 
     <!-- FORM SOURCES (was buried as samples-only; this is the core ask) -->
     <section class="panel" id="panel-docs" role="tabpanel">
-      <h2>2. Form sources by shipment step</h2>
+      <h2>2. Form sources</h2>
       <p class="hint">
-        One step at a time — open a row, tick what you look at today, then
-        <strong>Next</strong>. Or click <strong>Use typical Agro Hub defaults</strong>
-        and only change the steps that differ for you.
+        One <strong>form</strong> at a time — open a card, tick what you look at today to fill it, then
+        <strong>Next</strong>. Or click <strong>Use typical defaults</strong>
+        and only change the forms that differ for you.
       </p>
       <div class="src-progress" id="srcProgress" aria-live="polite">
-        <span><strong id="srcProgressCount">0</strong> of <span id="srcProgressTotal">0</span> steps answered</span>
+        <span><strong id="srcProgressCount">0</strong> of <span id="srcProgressTotal">0</span> forms answered</span>
         <div class="bar" aria-hidden="true"><i id="srcProgressBar"></i></div>
         <button type="button" class="ghost" id="btnSrcDefaults" style="border-color:var(--line);color:var(--ink);background:#fff">Use typical defaults</button>
       </div>
@@ -882,17 +882,18 @@
    */
   var FORM_SOURCE_PHASES = [
     { id: "order", title: "Order & booking", blurb: "PI, CRO, loading date, commercial invoice" },
-    { id: "load", title: "Loading & customs", blurb: "Gate pass, FIA, GD, fumigation" },
-    { id: "bl", title: "Bill of lading", blurb: "Draft BL check and OBL" },
+    { id: "load", title: "Loading & customs", blurb: "Gate pass, customs invoice, FI request, GD, fumigation" },
+    { id: "bl", title: "Bill of lading", blurb: "Draft B/L and OBL / HBL" },
     { id: "final", title: "Final docs & customer", blurb: "Packing list, e-COO, ISF, customer pack" },
-    { id: "close", title: "Bank & after sail", blurb: "Physical bank set, tracking, payment" }
+    { id: "close", title: "Bank & after sail", blurb: "Bank covering letter, vessel update, payment / AR" }
   ];
 
+  /** One card = one TraceRoot form (not a workflow step). */
   var FORM_SOURCE_STEPS = [
     {
-      id: "pi", phase: "order", sno: "00–01",
-      title: "Open shipment & final PI",
-      fills: "Buyer, qty, prices, terms, packing, product lines",
+      id: "pi", phase: "order", sno: "PI",
+      title: "PI",
+      fills: "Buyer, addresses, qty, prices, payment/incoterms, packing, product lines",
       typical: ["proforma_pdf", "sales_pi_email"],
       sources: [
         { id: "proforma_pdf", tag: "doc", label: "Proforma invoice PDF from Sales" },
@@ -902,21 +903,31 @@
       ]
     },
     {
-      id: "cro_loading", phase: "order", sno: "02",
-      title: "CRO & estimated loading date",
-      fills: "Booking #, vessel, POL, cut-offs; loading date",
-      typical: ["cro_pdf", "cro_forward_email", "loading_date_email"],
+      id: "cro", phase: "order", sno: "CRO",
+      title: "CRO",
+      fills: "Booking #, vessel, POL, cut-offs / docs due",
+      typical: ["cro_pdf", "cro_forward_email"],
       sources: [
         { id: "cro_pdf", tag: "doc", label: "CRO / booking confirmation PDF" },
         { id: "cro_forward_email", tag: "email", label: "Sales email forwarding the CRO" },
-        { id: "loading_date_email", tag: "email", label: "Sales / factory loading-date message" },
-        { id: "loading_date_whatsapp", tag: "email", label: "WhatsApp / chat with loading date" }
+        { id: "forwarder_booking_email", tag: "email", label: "Forwarder booking email (no separate PDF)" }
       ]
     },
     {
-      id: "ci_sap", phase: "order", sno: "03",
-      title: "Commercial invoice → SAP",
-      fills: "CI header, consignee, lines, pallet type",
+      id: "loading_date", phase: "order", sno: "Load date",
+      title: "Estimated loading date",
+      fills: "Date that drives all export deadlines",
+      typical: ["loading_date_email"],
+      sources: [
+        { id: "loading_date_email", tag: "email", label: "Sales / factory loading-date message" },
+        { id: "loading_date_whatsapp", tag: "email", label: "WhatsApp / chat with loading date" },
+        { id: "cro_pdf", tag: "doc", label: "Taken from CRO (no separate message)" }
+      ]
+    },
+    {
+      id: "commercial_invoice", phase: "order", sno: "CI",
+      title: "Commercial invoice",
+      fills: "CI header, consignee, route, lines, weights, pallet type (incl. SAP post)",
       typical: ["final_pi", "cro_pdf"],
       sources: [
         { id: "final_pi", tag: "doc", label: "Final approved PI" },
@@ -926,9 +937,9 @@
       ]
     },
     {
-      id: "gate", phase: "load", sno: "04",
-      title: "Container # & gate pass",
-      fills: "Container, seal, packages, weights, driver",
+      id: "gate_pass", phase: "load", sno: "Gate",
+      title: "Gate pass / container details",
+      fills: "Container, seal, vehicle, packages, qty, net/gross, driver, batch",
       typical: ["gate_pass", "container_whatsapp"],
       sources: [
         { id: "gate_pass", tag: "doc", label: "Factory outward gate pass" },
@@ -938,108 +949,148 @@
       ]
     },
     {
-      id: "customs_fia", phase: "load", sno: "05",
-      title: "Customs invoice & FIA",
-      fills: "Customs invoice; bank FI form; FIA #",
-      typical: ["final_pi", "gate_pass", "customs_template", "fi_request_xlsx"],
+      id: "customs_invoice", phase: "load", sno: "Customs inv",
+      title: "Customs invoice",
+      fills: "Customs invoice fields (packages, weights, values, marks)",
+      typical: ["final_pi", "gate_pass", "customs_template"],
       sources: [
         { id: "final_pi", tag: "doc", label: "Final PI" },
         { id: "gate_pass", tag: "doc", label: "Gate pass" },
-        { id: "customs_template", tag: "doc", label: "Customs invoice template" },
-        { id: "fi_request_xlsx", tag: "doc", label: "HBL FI REQUEST Excel" },
-        { id: "bank_send_email", tag: "email", label: "Email to bank with FI form" },
-        { id: "bank_amend_email", tag: "email", label: "Bank correction email" },
-        { id: "psw_fia", tag: "note", label: "FIA # from PSW" }
+        { id: "customs_template", tag: "doc", label: "Customs invoice template (Excel / PDF)" },
+        { id: "commercial_invoice", tag: "doc", label: "Commercial invoice (same layout)" }
       ]
     },
     {
-      id: "gd", phase: "load", sno: "06",
-      title: "Clearing pack & GD",
-      fills: "Pack to clearing agent; GD status ladder",
-      typical: ["customs_inv", "cro_pdf", "fia_form", "clearing_email", "gd_psw"],
+      id: "fi_request", phase: "load", sno: "FI",
+      title: "FI request",
+      fills: "Bank FI / FIA request (bank, IBAN, amounts); later FIA #",
+      typical: ["fi_request_xlsx", "bank_send_email"],
+      sources: [
+        { id: "fi_request_xlsx", tag: "doc", label: "HBL FI REQUEST Excel template" },
+        { id: "customs_invoice", tag: "doc", label: "Customs invoice (for amounts)" },
+        { id: "bank_send_email", tag: "email", label: "Email sending FI form to bank" },
+        { id: "bank_amend_email", tag: "email", label: "Bank “correct and resend” email" },
+        { id: "psw_fia", tag: "note", label: "FIA # read from PSW portal" }
+      ]
+    },
+    {
+      id: "clearing_pack", phase: "load", sno: "Clearing",
+      title: "Clearing pack",
+      fills: "What you send the clearing agent to file the GD",
+      typical: ["customs_inv", "cro_pdf", "fia_form", "clearing_email"],
       sources: [
         { id: "customs_inv", tag: "doc", label: "Approved customs invoice" },
         { id: "cro_pdf", tag: "doc", label: "CRO" },
-        { id: "fia_form", tag: "doc", label: "FIA / FI form" },
-        { id: "clearing_email", tag: "email", label: "Email to clearing agent" },
-        { id: "gd_psw", tag: "doc", label: "GD PDF from PSW" }
+        { id: "fia_form", tag: "doc", label: "FIA / FI form (or FI #)" },
+        { id: "clearing_email", tag: "email", label: "Email to clearing agent (body + attachments)" }
       ]
     },
     {
-      id: "fumigation", phase: "load", sno: "07",
+      id: "gd", phase: "load", sno: "GD",
+      title: "GD",
+      fills: "GD number; Assigned → Gate In → Loading Allowed",
+      typical: ["gd_psw"],
+      sources: [
+        { id: "gd_psw", tag: "doc", label: "GD PDF downloaded from PSW" },
+        { id: "clearing_agent_email", tag: "email", label: "Clearing agent email with GD #" },
+        { id: "psw_portal", tag: "note", label: "Read from PSW (no download)" }
+      ]
+    },
+    {
+      id: "fumigation", phase: "load", sno: "Fumigation",
       title: "Fumigation / TC / phyto",
-      fills: "Only if wooden pallets — skip if you always use non-wood",
+      fills: "Treatment request, affidavit, TC & phyto — wood pallets only",
       typical: [],
       optional: true,
       sources: [
         { id: "not_applicable", tag: "note", label: "Not applicable (non-wood only)" },
-        { id: "customs_inv", tag: "doc", label: "Customs invoice (wood)" },
+        { id: "customs_inv", tag: "doc", label: "Customs invoice (wood marking)" },
         { id: "gd_copy", tag: "doc", label: "GD copy" },
-        { id: "affidavit", tag: "doc", label: "Affidavit template" },
+        { id: "affidavit", tag: "doc", label: "Per-shipment affidavit template" },
         { id: "fumigator_email", tag: "email", label: "Email to fumigator" },
         { id: "tc_cert", tag: "doc", label: "Treatment certificate" },
         { id: "phyto_cert", tag: "doc", label: "Phytosanitary certificate" }
       ]
     },
     {
-      id: "bl", phase: "bl", sno: "08",
-      title: "Draft B/L & OBL",
-      fills: "Cross-check draft BL; confirm OBL",
-      typical: ["gd_packet", "checking_copy_email", "obl_scan"],
+      id: "draft_bl", phase: "bl", sno: "Draft BL",
+      title: "Draft B/L",
+      fills: "Cross-check draft BL fields vs GD packet",
+      typical: ["gd_packet", "checking_copy_email"],
       sources: [
-        { id: "gd_packet", tag: "doc", label: "GD packet (CI + CRO + FIA + GD)" },
-        { id: "bl_format", tag: "doc", label: "BL FORMAT Word template" },
-        { id: "checking_copy_email", tag: "email", label: "Checking-copy email" },
-        { id: "approve_email", tag: "email", label: "Your Approved / correction reply" },
-        { id: "obl_scan", tag: "doc", label: "Scanned OBL / HBL" },
-        { id: "forwarder_portal", tag: "note", label: "Forwarder portal (no file)" }
+        { id: "gd_packet", tag: "doc", label: "GD packet (customs inv + CRO + FIA + GD)" },
+        { id: "bl_format", tag: "doc", label: "BL FORMAT Word template (manual forwarders)" },
+        { id: "checking_copy_email", tag: "email", label: "Checking-copy email from forwarder / line" },
+        { id: "approve_email", tag: "email", label: "Your “Approved” / correction reply" },
+        { id: "forwarder_portal", tag: "note", label: "Forwarder portal (e.g. Gama) — no file" }
       ]
     },
     {
-      id: "ecoo", phase: "final", sno: "09",
-      title: "Packing list & e-COO",
-      fills: "CI revision, packing list, e-COO",
-      typical: ["gate_pass", "obl", "packing_template"],
+      id: "obl", phase: "bl", sno: "OBL",
+      title: "OBL / HBL",
+      fills: "Confirm original / house B/L on file",
+      typical: ["obl_scan"],
+      sources: [
+        { id: "obl_scan", tag: "doc", label: "Scanned OBL / HBL PDF" },
+        { id: "forwarder_obl_email", tag: "email", label: "Forwarder email attaching OBL" },
+        { id: "forwarder_portal", tag: "note", label: "Downloaded from forwarder portal" }
+      ]
+    },
+    {
+      id: "packing_list", phase: "final", sno: "PL",
+      title: "Packing list",
+      fills: "Packages, weights, marks after OBL",
+      typical: ["gate_pass", "packing_template"],
       sources: [
         { id: "gate_pass", tag: "doc", label: "Gate pass" },
         { id: "obl", tag: "doc", label: "OBL / HBL" },
         { id: "packing_template", tag: "doc", label: "Packing list template" },
-        { id: "ci_revision", tag: "doc", label: "Invoice for dates / PI #" },
-        { id: "ecoo_psw", tag: "doc", label: "e-COO from PSW" },
-        { id: "vgm", tag: "doc", label: "VGM form (if used)" }
+        { id: "ci_revision", tag: "doc", label: "Commercial / customs invoice for dates & PI #" }
       ]
     },
     {
-      id: "isf", phase: "final", sno: "10",
-      title: "ISF (US customers)",
-      fills: "Flexport ISF sheet parties & refs",
+      id: "ecoo", phase: "final", sno: "e-COO",
+      title: "e-COO",
+      fills: "Certificate of origin (ECO-GD / e-COO)",
+      typical: ["ecoo_psw"],
+      sources: [
+        { id: "ecoo_psw", tag: "doc", label: "e-COO PDF from PSW" },
+        { id: "obl", tag: "doc", label: "OBL / HBL (for refs)" },
+        { id: "vgm", tag: "doc", label: "VGM form (if filed with e-COO)" },
+        { id: "psw_portal", tag: "note", label: "Filed in PSW only (no PDF kept)" }
+      ]
+    },
+    {
+      id: "isf", phase: "final", sno: "ISF",
+      title: "ISF",
+      fills: "Flexport ISF parties, B/L, vessel, container, HTS — US only",
       typical: ["obl", "isf_sheet", "customer_master"],
       sources: [
         { id: "not_us", tag: "note", label: "Not used (no US buyers)" },
         { id: "obl", tag: "doc", label: "OBL / HBL" },
-        { id: "vessel_forwarder", tag: "email", label: "Forwarder vessel update" },
-        { id: "isf_sheet", tag: "doc", label: "Flexport ISF Excel" },
-        { id: "customer_master", tag: "note", label: "Customer master (IOR / FDA)" },
-        { id: "isf_send_email", tag: "email", label: "Email sending ISF" },
-        { id: "isf_confirm_email", tag: "email", label: "Filing confirmation" }
+        { id: "vessel_forwarder", tag: "email", label: "Forwarder vessel / voyage update" },
+        { id: "isf_sheet", tag: "doc", label: "Flexport ISF Excel template" },
+        { id: "customer_master", tag: "note", label: "Customer master (IOR, consignee #, FDA)" },
+        { id: "isf_send_email", tag: "email", label: "Email sending ISF to customer / agent" },
+        { id: "isf_confirm_email", tag: "email", label: "Filing confirmation email" }
       ]
     },
     {
-      id: "customer_pack", phase: "final", sno: "11",
+      id: "customer_pack", phase: "final", sno: "Cust pack",
       title: "Customer document pack",
-      fills: "Assemble and email the buyer’s pack",
+      fills: "Assemble & send the pack each buyer requires",
       typical: ["doc_bank", "pack_send_email"],
       sources: [
-        { id: "doc_bank", tag: "doc", label: "Docs already on the shipment" },
-        { id: "customer_ci_layout", tag: "doc", label: "Customer-specific CI layout" },
-        { id: "pack_send_email", tag: "email", label: "Pack send email template" },
-        { id: "pack_amend_email", tag: "email", label: "Customer amendment email" }
+        { id: "doc_bank", tag: "doc", label: "Docs already on the shipment (CI, PL, OBL, e-COO, …)" },
+        { id: "customer_ci_layout", tag: "doc", label: "Customer-specific CI layout (if different)" },
+        { id: "pack_send_email", tag: "email", label: "Email template sending the pack" },
+        { id: "pack_amend_email", tag: "email", label: "Customer amendment request email" }
       ]
     },
     {
-      id: "bank_docs", phase: "close", sno: "12",
-      title: "Physical bank set",
-      fills: "Covering letter + print set",
+      id: "bank_covering_letter", phase: "close", sno: "Bank set",
+      title: "Bank covering letter / physical set",
+      fills: "Covering letter + print checklist for bank submission",
       typical: ["covering_letter", "ci", "packing_list", "obl_scan", "gd"],
       sources: [
         { id: "covering_letter", tag: "doc", label: "Covering letter template" },
@@ -1050,20 +1101,42 @@
       ]
     },
     {
-      id: "vessel_ar", phase: "close", sno: "13–14",
-      title: "Tracking & payment / AR",
-      fills: "ETA updates; reminders; bank confirm",
-      typical: ["forwarder_eta_email", "bank_payment_email", "bank_confirm_reply"],
+      id: "vessel_update", phase: "close", sno: "Vessel",
+      title: "Vessel / ETA update",
+      fills: "Sail / ETA message to customer",
+      typical: ["forwarder_eta_email"],
       sources: [
-        { id: "carrier_portal", tag: "note", label: "Carrier tracking site" },
+        { id: "carrier_portal", tag: "note", label: "Carrier tracking website / portal" },
         { id: "forwarder_eta_email", tag: "email", label: "Forwarder sailed / ETA email" },
+        { id: "customer_eta_email", tag: "email", label: "Your ETA email template to customer" }
+      ]
+    },
+    {
+      id: "payment_ar", phase: "close", sno: "AR",
+      title: "Payment / AR",
+      fills: "Reminders; bank payment confirm",
+      typical: ["bank_payment_email", "bank_confirm_reply"],
+      sources: [
         { id: "ar_reminder_email", tag: "email", label: "Payment reminder template" },
         { id: "bank_payment_email", tag: "email", label: "Bank payment-advice email" },
-        { id: "bank_confirm_reply", tag: "email", label: "Your confirm reply to bank" },
+        { id: "bank_confirm_reply", tag: "email", label: "Your reply confirming invoice / GD / partial" },
         { id: "remittance", tag: "doc", label: "Customer remittance advice" }
       ]
     }
   ];
+
+  /** Old combined card ids → new form cards (for drafts saved before the split). */
+  var FORM_SOURCE_LEGACY = {
+    cro_loading: ["cro", "loading_date"],
+    ci_sap: ["commercial_invoice"],
+    gate: ["gate_pass"],
+    customs_fia: ["customs_invoice", "fi_request"],
+    bl: ["draft_bl", "obl"],
+    ecoo: ["packing_list", "ecoo"],
+    bank_docs: ["bank_covering_letter"],
+    vessel_ar: ["vessel_update", "payment_ar"],
+    gd: ["clearing_pack", "gd"]
+  };
 
   var openSourceStepId = "pi";
 
@@ -1146,6 +1219,7 @@
     customers: [emptyCustomer()],
     products: [{ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" }],
     formSources: {},
+    formSourcesVersion: 2,
     documents: {}
   };
 
@@ -1779,9 +1853,100 @@
     scheduleSave();
   });
 
-  /* ---- form sources by step ---- */
+  /* ---- form sources by form ---- */
+  function mergeFormSourceInto(targetId, from) {
+    if (!from) return;
+    var fs = state.formSources[targetId];
+    if (!fs) return;
+    (from.sources || []).forEach(function (id) {
+      if (fs.sources.indexOf(id) < 0) fs.sources.push(id);
+    });
+    if (from.canSendSample) fs.canSendSample = true;
+    if (from.otherSource && !fs.otherSource) fs.otherSource = from.otherSource;
+    if (from.notes && !fs.notes) fs.notes = from.notes;
+  }
+
+  function splitSourcesByAllow(fromSources, allowIds) {
+    var allow = {};
+    (allowIds || []).forEach(function (id) { allow[id] = true; });
+    return (fromSources || []).filter(function (id) { return allow[id]; });
+  }
+
   function ensureFormSources() {
     if (!state.formSources) state.formSources = {};
+
+    // Migrate combined workflow cards → form-named cards (once)
+    if (!(state.formSourcesVersion >= 2)) {
+    Object.keys(FORM_SOURCE_LEGACY).forEach(function (oldId) {
+      var old = state.formSources[oldId];
+      if (!old) return;
+      var targets = FORM_SOURCE_LEGACY[oldId];
+      targets.forEach(function (tid) {
+        if (!state.formSources[tid]) state.formSources[tid] = emptyFormSource();
+      });
+      if (oldId === "customs_fia") {
+        state.formSources.customs_invoice.sources = splitSourcesByAllow(old.sources, [
+          "final_pi", "gate_pass", "customs_template", "commercial_invoice"
+        ]);
+        state.formSources.fi_request.sources = splitSourcesByAllow(old.sources, [
+          "fi_request_xlsx", "customs_invoice", "bank_send_email", "bank_amend_email", "psw_fia"
+        ]);
+        mergeFormSourceInto("customs_invoice", { canSendSample: old.canSendSample, otherSource: old.otherSource, notes: old.notes, sources: [] });
+        mergeFormSourceInto("fi_request", { canSendSample: old.canSendSample, sources: [] });
+      } else if (oldId === "cro_loading") {
+        state.formSources.cro.sources = splitSourcesByAllow(old.sources, [
+          "cro_pdf", "cro_forward_email", "forwarder_booking_email"
+        ]);
+        state.formSources.loading_date.sources = splitSourcesByAllow(old.sources, [
+          "loading_date_email", "loading_date_whatsapp", "cro_pdf"
+        ]);
+        mergeFormSourceInto("cro", { canSendSample: old.canSendSample, otherSource: old.otherSource, notes: old.notes, sources: [] });
+      } else if (oldId === "gd") {
+        // Old GD card mixed clearing pack + GD
+        state.formSources.clearing_pack.sources = splitSourcesByAllow(old.sources, [
+          "customs_inv", "cro_pdf", "fia_form", "clearing_email"
+        ]);
+        state.formSources.gd.sources = splitSourcesByAllow(old.sources, [
+          "gd_psw", "clearing_agent_email", "psw_portal"
+        ]);
+        if (!state.formSources.gd.sources.length && (old.sources || []).indexOf("gd_psw") >= 0) {
+          state.formSources.gd.sources = ["gd_psw"];
+        }
+        mergeFormSourceInto("clearing_pack", { canSendSample: old.canSendSample, otherSource: old.otherSource, notes: old.notes, sources: [] });
+      } else if (oldId === "bl") {
+        state.formSources.draft_bl.sources = splitSourcesByAllow(old.sources, [
+          "gd_packet", "bl_format", "checking_copy_email", "approve_email", "forwarder_portal"
+        ]);
+        state.formSources.obl.sources = splitSourcesByAllow(old.sources, [
+          "obl_scan", "forwarder_obl_email", "forwarder_portal"
+        ]);
+        mergeFormSourceInto("draft_bl", { canSendSample: old.canSendSample, otherSource: old.otherSource, notes: old.notes, sources: [] });
+      } else if (oldId === "ecoo") {
+        state.formSources.packing_list.sources = splitSourcesByAllow(old.sources, [
+          "gate_pass", "obl", "packing_template", "ci_revision"
+        ]);
+        // keep ecoo entry; filter its sources
+        var ecooOnly = splitSourcesByAllow(old.sources, ["ecoo_psw", "obl", "vgm", "psw_portal"]);
+        state.formSources.ecoo.sources = ecooOnly.length ? ecooOnly : (state.formSources.ecoo.sources || []);
+        mergeFormSourceInto("packing_list", { canSendSample: old.canSendSample, otherSource: old.otherSource, notes: old.notes, sources: [] });
+      } else if (oldId === "vessel_ar") {
+        state.formSources.vessel_update.sources = splitSourcesByAllow(old.sources, [
+          "carrier_portal", "forwarder_eta_email", "customer_eta_email"
+        ]);
+        state.formSources.payment_ar.sources = splitSourcesByAllow(old.sources, [
+          "ar_reminder_email", "bank_payment_email", "bank_confirm_reply", "remittance"
+        ]);
+        mergeFormSourceInto("vessel_update", { canSendSample: old.canSendSample, otherSource: old.otherSource, notes: old.notes, sources: [] });
+      } else {
+        targets.forEach(function (tid) { mergeFormSourceInto(tid, old); });
+      }
+      // Drop obsolete combined keys only (keep ids that are still real forms, e.g. gd, ecoo)
+      var stillAForm = FORM_SOURCE_STEPS.some(function (s) { return s.id === oldId; });
+      if (!stillAForm) delete state.formSources[oldId];
+    });
+    state.formSourcesVersion = 2;
+    }
+
     FORM_SOURCE_STEPS.forEach(function (step) {
       if (!state.formSources[step.id]) {
         state.formSources[step.id] = emptyFormSource();
@@ -1841,7 +2006,7 @@
     openSourceStepId = firstEmpty ? firstEmpty.id : FORM_SOURCE_STEPS[0].id;
     renderDocs();
     scheduleSave();
-    setStatus("Typical defaults applied — review each step", true);
+    setStatus("Typical defaults applied — review each form", true);
   }
 
   function renderDocs() {
@@ -1898,9 +2063,9 @@
           '<span class="chev" aria-hidden="true">▾</span>' +
           "</button>" +
           '<div class="step-body">' +
-          '<p class="fills"><strong>Form TraceRoot fills:</strong> ' + escapeHtml(step.fills) + "</p>" +
+          '<p class="fills"><strong>This form captures:</strong> ' + escapeHtml(step.fills) + "</p>" +
           optNote +
-          '<p class="ask-label">What do you use today? (tick all that apply)</p>' +
+          '<p class="ask-label">What do you use today to fill this form? (tick all that apply)</p>' +
           '<div class="check-grid">' + checks + "</div>" +
           '<div class="grid" style="margin-top:8px">' +
           '<label class="field full" style="flex-direction:row;align-items:center;gap:8px;font-weight:500">' +
@@ -1910,13 +2075,13 @@
           '<label class="field full">Other source (if not listed)' +
           '<input data-src-other="' + step.id + '" placeholder="e.g. shared Google Sheet, verbal from factory…" value="' +
           escapeHtml(fs.otherSource || "") + '" /></label>' +
-          '<label class="field full">Notes for this step' +
+          '<label class="field full">Notes for this form' +
           '<input data-src-notes="' + step.id + '" placeholder="Optional" value="' +
           escapeHtml(fs.notes || "") + '" /></label>' +
           "</div>" +
           '<div class="step-nav">' +
           (hasNext
-            ? '<button type="button" class="pri" data-src-next="' + step.id + '">Next step</button>'
+            ? '<button type="button" class="pri" data-src-next="' + step.id + '">Next form</button>'
             : '<button type="button" class="pri" data-src-done="1">Done — continue to customers</button>') +
           '<button type="button" class="ghost" data-src-collapse="' + step.id + '" style="border-color:var(--line);color:var(--ink);background:#fff">Collapse</button>' +
           "</div>" +
@@ -1939,7 +2104,7 @@
   }
 
   document.getElementById("btnSrcDefaults").addEventListener("click", function () {
-    if (!window.confirm("Fill unanswered steps with typical Agro Hub sources? Your existing answers stay.")) return;
+    if (!window.confirm("Fill unanswered forms with typical Agro Hub sources? Your existing answers stay.")) return;
     applyTypicalDefaults();
   });
 
@@ -2175,6 +2340,7 @@
       customers: [emptyCustomer()],
       products: [{ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" }],
       formSources: {},
+      formSourcesVersion: 2,
       documents: {}
     };
     renderAll();
