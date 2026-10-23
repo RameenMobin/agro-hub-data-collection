@@ -120,10 +120,103 @@
       border: 1px solid var(--line); border-radius: 7px;
       padding: 8px 10px; background: #fafcfe;
     }
+    label.field > input:not([type="checkbox"]),
+    label.field > select,
+    label.field > textarea,
+    label.field > .combo {
+      width: 100%;
+    }
     input:focus, select:focus, textarea:focus {
       outline: 2px solid rgba(17, 112, 224, 0.35); border-color: var(--blue);
     }
+    select {
+      appearance: none;
+      -webkit-appearance: none;
+      padding-right: 32px;
+      background-color: #fafcfe;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236a8199' d='M1.4.6 6 5.2 10.6.6 12 2 6 8 0 2z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      cursor: pointer;
+    }
     textarea { min-height: 64px; resize: vertical; }
+    /* Themed combobox (replaces native datalist popovers) */
+    .combo {
+      position: relative;
+      display: block;
+      width: 100%;
+    }
+    .combo > input {
+      width: 100%;
+      padding-right: 34px;
+    }
+    .combo-chevron {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1;
+    }
+    .combo.open .combo-chevron { color: var(--blue); }
+    .combo-menu {
+      display: none;
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 4px);
+      z-index: 60;
+      max-height: 260px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 14px 32px rgba(7, 35, 56, 0.14);
+      padding: 4px 0;
+    }
+    .combo.open .combo-menu { display: block; }
+    .combo.open.drop-up .combo-menu {
+      top: auto;
+      bottom: calc(100% + 4px);
+    }
+    .combo-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: transparent;
+      padding: 8px 12px;
+      cursor: pointer;
+      font: inherit;
+      color: var(--ink);
+      border-radius: 0;
+    }
+    .combo-item:hover,
+    .combo-item.active {
+      background: var(--soft);
+    }
+    .combo-item .primary {
+      display: block;
+      font-weight: 500;
+      font-size: 13.5px;
+      color: var(--ink);
+    }
+    .combo-item .secondary {
+      display: block;
+      margin-top: 2px;
+      font-size: 11.5px;
+      color: var(--muted);
+      font-family: "IBM Plex Mono", monospace;
+    }
+    .combo-empty {
+      padding: 10px 12px;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+    table.data .combo { min-width: 8rem; }
     table.data {
       width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 8px 0 10px;
     }
@@ -374,7 +467,7 @@
           <input data-path="company.street" />
         </label>
         <label class="field">City
-          <input data-path="company.city" list="lov-cityPk" placeholder="Pick or type" />
+          <input data-path="company.city" data-combo="lov-cityPk" placeholder="Pick or type" autocomplete="off" />
         </label>
         <label class="field">State / province
           <input data-path="company.state" />
@@ -383,7 +476,7 @@
           <input data-path="company.postalCode" />
         </label>
         <label class="field">Country
-          <input data-path="company.country" list="lov-country" placeholder="Pick or type" />
+          <input data-path="company.country" data-combo="lov-country" placeholder="Pick or type" autocomplete="off" />
         </label>
         <label class="field full">Shipper TEL / FAX
           <input data-path="company.shipperContact" />
@@ -392,24 +485,12 @@
           <input data-path="company.fdaRegistrationNo" />
         </label>
         <label class="field">Default POL
-          <input data-path="company.defaultPol" list="lov-pol" placeholder="Pick or type" />
+          <input data-path="company.defaultPol" data-combo="lov-pol" placeholder="Pick or type" autocomplete="off" />
         </label>
         <label class="field">Country of origin (default)
-          <input data-path="company.countryOfOrigin" list="lov-country" placeholder="Pick or type" />
+          <input data-path="company.countryOfOrigin" data-combo="lov-country" placeholder="Pick or type" autocomplete="off" />
         </label>
       </div>
-      <datalist id="lov-country"></datalist>
-      <datalist id="lov-cityPk"></datalist>
-      <datalist id="lov-pol"></datalist>
-      <datalist id="lov-pod"></datalist>
-      <datalist id="lov-payment"></datalist>
-      <datalist id="lov-incoterms"></datalist>
-      <datalist id="lov-freight"></datalist>
-      <datalist id="lov-unit"></datalist>
-      <datalist id="lov-fwd-known">
-        <option value="Seagold"></option>
-      </datalist>
-      <datalist id="lov-forwarders"></datalist>
 
       <h3>ISF parties (when Agro Hub is seller)</h3>
       <p class="hint">
@@ -479,13 +560,13 @@
           </select>
         </label>
         <label class="field">Default freight marking
-          <input data-path="defaults.freightMarking" list="lov-freight" placeholder="Pick or type" />
+          <input data-path="defaults.freightMarking" data-combo="lov-freight" placeholder="Pick or type" autocomplete="off" />
         </label>
         <label class="field full">Default payment terms
-          <input data-path="defaults.paymentTerms" list="lov-payment" placeholder="Pick or type" />
+          <input data-path="defaults.paymentTerms" data-combo="lov-payment" placeholder="Pick or type" autocomplete="off" />
         </label>
         <label class="field full">Default incoterms
-          <input data-path="defaults.incoterms" list="lov-incoterms" placeholder="Pick or type" />
+          <input data-path="defaults.incoterms" data-combo="lov-incoterms" placeholder="Pick or type" autocomplete="off" />
         </label>
         <label class="field full">Documents usually listed on PI
           <span class="why">Tick all that appear on your proforma</span>
@@ -535,7 +616,6 @@
         (standard codes for salt, rice, spices, etc.). You can still override HS if needed.
         Rows you add here also drive the customer “default product” picker.
       </p>
-      <datalist id="lov-commodity"></datalist>
 
       <div class="csv-box">
         <strong>CSV option</strong>
@@ -813,44 +893,49 @@
     if (hit.unitPrice && !c.unitPrice) c.unitPrice = hit.unitPrice;
   }
 
-  function refreshCommodityDatalist() {
-    var dl = document.getElementById("lov-commodity");
-    if (!dl) return;
+  function commodityComboOptions() {
     var seen = {};
     var opts = [];
     function add(c) {
-      if (!c || !c.description) return;
-      var key = c.description.toLowerCase();
+      if (!c || !(c.description || c.sku)) return;
+      var key = ((c.sku || "") + "|" + (c.description || "")).toLowerCase();
       if (seen[key]) return;
       seen[key] = true;
-      opts.push(
-        '<option value="' + escapeHtml(c.description) + '" label="' +
-        escapeHtml((c.sku ? c.sku + " · " : "") + c.hsCode) + '"></option>'
-      );
-      if (c.sku) {
-        opts.push(
-          '<option value="' + escapeHtml(c.sku) + '" label="' +
-          escapeHtml(c.description + " · " + c.hsCode) + '"></option>'
-        );
-      }
+      var primary = c.description || c.sku;
+      var secondary = [c.sku, c.hsCode].filter(Boolean).join(" · ");
+      opts.push({
+        value: primary,
+        primary: primary,
+        secondary: secondary,
+        sku: c.sku || "",
+        description: c.description || ""
+      });
     }
     COMMODITY_CATALOG.forEach(add);
     (state.products || []).forEach(add);
-    dl.innerHTML = opts.join("");
+    return opts;
+  }
+
+  function comboOptionsFor(listId) {
+    if (listId === "lov-commodity") return commodityComboOptions();
+    if (listId === "lov-forwarders") {
+      return (state.partners && state.partners.forwarders || [])
+        .map(function (f) { return (f.name || "").trim(); })
+        .filter(Boolean)
+        .map(function (n) { return { value: n, primary: n, secondary: "" }; });
+    }
+    if (listId === "lov-fwd-known") {
+      return [{ value: "Seagold", primary: "Seagold", secondary: "Gama portal" }];
+    }
+    var key = String(listId || "").replace(/^lov-/, "");
+    var list = LOV[key];
+    if (!list) return [];
+    return list.filter(function (x) { return x !== "Other"; }).map(function (opt) {
+      return { value: opt, primary: opt, secondary: "" };
+    });
   }
 
   function fillLovSelects() {
-    Object.keys(LOV).forEach(function (key) {
-      var dl = document.getElementById("lov-" + key);
-      if (!dl) return;
-      dl.innerHTML = LOV[key]
-        .filter(function (x) { return x !== "Other"; })
-        .map(function (opt) {
-          return "<option value=\"" + escapeHtml(opt) + "\"></option>";
-        })
-        .join("");
-    });
-    refreshCommodityDatalist();
     document.querySelectorAll("select[data-lov]").forEach(function (sel) {
       var key = sel.getAttribute("data-lov");
       var list = LOV[key];
@@ -865,7 +950,150 @@
       });
       if (current) sel.value = current;
     });
+    enhanceCombos(document);
   }
+
+  /* ---- themed combobox (replaces native datalist) ---- */
+  var activeCombo = null;
+
+  function closeCombo(wrap) {
+    if (!wrap) return;
+    wrap.classList.remove("open", "drop-up");
+    if (activeCombo === wrap) activeCombo = null;
+  }
+
+  function closeAllCombos() {
+    document.querySelectorAll(".combo.open").forEach(closeCombo);
+  }
+
+  function renderComboMenu(wrap, filterText) {
+    var inp = wrap.querySelector("input");
+    var menu = wrap.querySelector(".combo-menu");
+    if (!inp || !menu) return;
+    var listId = inp.getAttribute("data-combo");
+    var q = String(filterText != null ? filterText : inp.value || "").trim().toLowerCase();
+    var opts = comboOptionsFor(listId).filter(function (o) {
+      if (!q) return true;
+      return (o.primary + " " + (o.secondary || "") + " " + (o.sku || "")).toLowerCase().indexOf(q) >= 0;
+    });
+    if (!opts.length) {
+      menu.innerHTML = '<div class="combo-empty">No matches — keep typing a custom value</div>';
+      return;
+    }
+    menu.innerHTML = opts.map(function (o, idx) {
+      return '<button type="button" class="combo-item' + (idx === 0 ? " active" : "") + '" data-value="' +
+        escapeHtml(o.value) + '" data-sku="' + escapeHtml(o.sku || "") + '" data-desc="' +
+        escapeHtml(o.description || "") + '">' +
+        '<span class="primary">' + escapeHtml(o.primary) + "</span>" +
+        (o.secondary ? '<span class="secondary">' + escapeHtml(o.secondary) + "</span>" : "") +
+        "</button>";
+    }).join("");
+  }
+
+  function openCombo(wrap) {
+    if (!wrap) return;
+    closeAllCombos();
+    renderComboMenu(wrap, wrap.querySelector("input").value);
+    wrap.classList.add("open");
+    var rect = wrap.getBoundingClientRect();
+    if (rect.bottom + 280 > window.innerHeight && rect.top > 280) {
+      wrap.classList.add("drop-up");
+    }
+    activeCombo = wrap;
+  }
+
+  function pickComboItem(wrap, btn) {
+    var inp = wrap.querySelector("input");
+    if (!inp || !btn) return;
+    var val = btn.getAttribute("data-value") || "";
+    var listId = inp.getAttribute("data-combo");
+    // Commodity SKU field prefers sku when available
+    if (listId === "lov-commodity" && inp.getAttribute("data-k") === "sku") {
+      val = btn.getAttribute("data-sku") || val;
+    } else if (listId === "lov-commodity" && inp.getAttribute("data-k") === "productSku") {
+      val = btn.getAttribute("data-sku") || val;
+    } else if (listId === "lov-commodity" &&
+      (inp.getAttribute("data-k") === "description" || inp.getAttribute("data-k") === "productDescription")) {
+      val = btn.getAttribute("data-desc") || val;
+    }
+    inp.value = val;
+    closeCombo(wrap);
+    inp.dispatchEvent(new Event("input", { bubbles: true }));
+    inp.dispatchEvent(new Event("change", { bubbles: true }));
+    inp.focus();
+  }
+
+  function enhanceCombos(root) {
+    (root || document).querySelectorAll("input[data-combo], input[list]").forEach(function (inp) {
+      var listId = inp.getAttribute("data-combo") || inp.getAttribute("list");
+      if (!listId) return;
+      if (inp.getAttribute("list")) {
+        inp.removeAttribute("list");
+        inp.setAttribute("data-combo", listId);
+      }
+      inp.setAttribute("autocomplete", "off");
+      inp.setAttribute("spellcheck", "false");
+      if (inp.closest(".combo")) return;
+
+      var wrap = document.createElement("div");
+      wrap.className = "combo";
+      inp.parentNode.insertBefore(wrap, inp);
+      wrap.appendChild(inp);
+
+      var chev = document.createElement("span");
+      chev.className = "combo-chevron";
+      chev.setAttribute("aria-hidden", "true");
+      chev.textContent = "▾";
+      wrap.appendChild(chev);
+
+      var menu = document.createElement("div");
+      menu.className = "combo-menu";
+      menu.setAttribute("role", "listbox");
+      wrap.appendChild(menu);
+
+      inp.addEventListener("focus", function () { openCombo(wrap); });
+      inp.addEventListener("click", function () { openCombo(wrap); });
+      inp.addEventListener("input", function () {
+        if (!wrap.classList.contains("open")) openCombo(wrap);
+        else renderComboMenu(wrap, inp.value);
+      });
+      inp.addEventListener("keydown", function (e) {
+        var items = Array.prototype.slice.call(menu.querySelectorAll(".combo-item"));
+        var cur = menu.querySelector(".combo-item.active");
+        var idx = items.indexOf(cur);
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          if (!wrap.classList.contains("open")) { openCombo(wrap); return; }
+          if (cur) cur.classList.remove("active");
+          var next = items[Math.min(items.length - 1, Math.max(0, idx) + 1)] || items[0];
+          if (next) { next.classList.add("active"); next.scrollIntoView({ block: "nearest" }); }
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          if (cur) cur.classList.remove("active");
+          var prev = items[Math.max(0, idx - 1)] || items[0];
+          if (prev) { prev.classList.add("active"); prev.scrollIntoView({ block: "nearest" }); }
+        } else if (e.key === "Enter" && wrap.classList.contains("open") && cur) {
+          e.preventDefault();
+          pickComboItem(wrap, cur);
+        } else if (e.key === "Escape") {
+          closeCombo(wrap);
+        }
+      });
+      menu.addEventListener("mousedown", function (e) {
+        var btn = e.target.closest(".combo-item");
+        if (!btn) return;
+        e.preventDefault();
+        pickComboItem(wrap, btn);
+      });
+    });
+  }
+
+  document.addEventListener("mousedown", function (e) {
+    if (activeCombo && !activeCombo.contains(e.target)) closeAllCombos();
+  });
+  document.addEventListener("scroll", function () {
+    if (activeCombo) closeAllCombos();
+  }, true);
 
   function selectOpts(list, selected, includeBlank) {
     var html = includeBlank !== false ? '<option value="">—</option>' : "";
@@ -1504,7 +1732,7 @@
         '<label class="field">City<input data-isf="' + i + '" data-k="city"' + disabled + " /></label>" +
         '<label class="field">State / province<input data-isf="' + i + '" data-k="state"' + disabled + " /></label>" +
         '<label class="field">Postal code<input data-isf="' + i + '" data-k="postalCode"' + disabled + " /></label>" +
-        '<label class="field">Country<input data-isf="' + i + '" data-k="country" list="lov-country" placeholder="Pick or type"' + disabled + " /></label>" +
+        '<label class="field">Country<input data-isf="' + i + '" data-k="country" data-combo="lov-country" placeholder="Pick or type" autocomplete="off"' + disabled + " /></label>" +
         '<label class="field">Contact (tel / email)<input data-isf="' + i + '" data-k="contact"' + disabled + " /></label>" +
         '<label class="field">FDA registration (if any)<input data-isf="' + i + '" data-k="fdaRegistration"' + disabled + " /></label>" +
         "</div>";
@@ -1514,6 +1742,7 @@
         if (el.type === "checkbox") return;
         el.value = p[k] != null ? String(p[k]) : "";
       });
+      enhanceCombos(card);
     });
   }
 
@@ -1594,21 +1823,6 @@
     if (!p.forwarders.length) p.forwarders = defaultForwarders();
   }
 
-  function refreshForwarderDatalist() {
-    var dl = document.getElementById("lov-forwarders");
-    if (!dl) {
-      dl = document.createElement("datalist");
-      dl.id = "lov-forwarders";
-      document.body.appendChild(dl);
-    }
-    var names = (state.partners.forwarders || [])
-      .map(function (f) { return (f.name || "").trim(); })
-      .filter(Boolean);
-    dl.innerHTML = names.map(function (n) {
-      return "<option value=\"" + escapeHtml(n) + "\"></option>";
-    }).join("");
-  }
-
   function renderForwarders() {
     ensurePartners();
     var root = document.getElementById("forwardersList");
@@ -1654,7 +1868,7 @@
         '</strong><button type="button" class="rm" data-rm-fwd="' + i + '">Remove</button></div>' +
         '<div class="grid">' +
         '<label class="field">Name' +
-        '<input data-fwd="' + i + '" data-k="name" list="lov-fwd-known" placeholder="e.g. Seagold" /></label>' +
+        '<input data-fwd="' + i + '" data-k="name" data-combo="lov-fwd-known" placeholder="e.g. Seagold" autocomplete="off" /></label>' +
         '<label class="field">Email / phone' +
         '<input data-fwd="' + i + '" data-k="contact" /></label>' +
         '<label class="field">B/L path' +
@@ -1691,8 +1905,8 @@
         }
         el.value = f[k] || "";
       });
+      enhanceCombos(card);
     });
-    refreshForwarderDatalist();
   }
 
   document.getElementById("addForwarder").addEventListener("click", function () {
@@ -1719,7 +1933,6 @@
     var k = t.getAttribute("data-k");
     if (t.type === "checkbox") return;
     state.partners.forwarders[i][k] = t.value;
-    if (k === "name") refreshForwarderDatalist();
     if (document.getElementById("panel-send").classList.contains("active")) renderSamplePack();
     scheduleSave();
   });
@@ -1889,10 +2102,10 @@
         fieldList("incoterms", "Incoterms", "lov-incoterms", i) +
         fieldList("freightMarking", "Freight marking", "lov-freight", i) +
         '<label class="field">Default SKU / commodity' +
-        '<input data-cust="' + i + '" data-k="productSku" list="lov-commodity" placeholder="Pick commodity — HS fills in" />' +
+        '<input data-cust="' + i + '" data-k="productSku" data-combo="lov-commodity" placeholder="Pick commodity — HS fills in" autocomplete="off" />' +
         '<span class="why">Pick from catalog; HS auto-fills</span></label>' +
         '<label class="field">Default description' +
-        '<input data-cust="' + i + '" data-k="productDescription" list="lov-commodity" placeholder="Pick or type commodity" />' +
+        '<input data-cust="' + i + '" data-k="productDescription" data-combo="lov-commodity" placeholder="Pick or type commodity" autocomplete="off" />' +
         '</label>' +
         field("quantity", "Default qty", i) +
         fieldList("unit", "Unit", "lov-unit", i) +
@@ -1906,7 +2119,7 @@
         field("consigneeNumber", "Consignee number(s)", i) +
         field("isfSendToEmail", "ISF send-to email", i, "email") +
         '<label class="field">Forwarder for this customer' +
-        '<input data-cust="' + i + '" data-k="forwarder" list="lov-forwarders" placeholder="Pick from Partners" /></label>' +
+        '<input data-cust="' + i + '" data-k="forwarder" data-combo="lov-forwarders" placeholder="Pick from Partners" autocomplete="off" /></label>' +
         '<label class="field">B/L path<select data-cust="' + i + '" data-k="blPath">' +
         '<option value="">—</option>' +
         '<option value="gama">Gama portal (Seagold)</option>' +
@@ -1926,6 +2139,7 @@
         }
         el.value = c[k] || "";
       });
+      enhanceCombos(card);
     });
   }
 
@@ -1935,7 +2149,8 @@
   }
   function fieldList(k, label, listId, i) {
     return '<label class="field">' + escapeHtml(label) +
-      '<input data-cust="' + i + '" data-k="' + k + '" list="' + listId + '" placeholder="Pick or type" /></label>';
+      '<input data-cust="' + i + '" data-k="' + k + '" data-combo="' + listId +
+      '" placeholder="Pick or type" autocomplete="off" /></label>';
   }
   function fieldFull(k, label, i) {
     return '<label class="field full">' + escapeHtml(label) +
@@ -2032,15 +2247,14 @@
 
   /* ---- products ---- */
   function renderProducts() {
-    refreshCommodityDatalist();
     var tbody = document.querySelector("#productsTable tbody");
     tbody.innerHTML = "";
     state.products.forEach(function (p, i) {
       var tr = document.createElement("tr");
       tr.innerHTML =
-        '<td><input data-prod="' + i + '" data-k="sku" list="lov-commodity" placeholder="SKU / commodity" /></td>' +
-        '<td><input data-prod="' + i + '" data-k="description" list="lov-commodity" placeholder="Pick commodity" /></td>' +
-        '<td><input data-prod="' + i + '" data-k="unit" list="lov-unit" placeholder="Pick or type" /></td>' +
+        '<td><input data-prod="' + i + '" data-k="sku" data-combo="lov-commodity" placeholder="SKU / commodity" autocomplete="off" /></td>' +
+        '<td><input data-prod="' + i + '" data-k="description" data-combo="lov-commodity" placeholder="Pick commodity" autocomplete="off" /></td>' +
+        '<td><input data-prod="' + i + '" data-k="unit" data-combo="lov-unit" placeholder="Pick or type" autocomplete="off" /></td>' +
         '<td><input data-prod="' + i + '" data-k="typicalQty" /></td>' +
         '<td><input data-prod="' + i + '" data-k="unitPrice" /></td>' +
         '<td><input data-prod="' + i + '" data-k="hsCode" class="mono" placeholder="Auto" title="Filled from commodity; editable" /></td>' +
@@ -2049,6 +2263,7 @@
       tr.querySelectorAll("input").forEach(function (inp) {
         inp.value = p[inp.getAttribute("data-k")] || "";
       });
+      enhanceCombos(tr);
     });
   }
 
@@ -2064,7 +2279,6 @@
     if (fromKey === "description" && !hit.sku) p.description = value;
     if (fromKey === "sku" && value && !hit.sku) p.sku = value;
     renderProducts();
-    refreshCommodityDatalist();
     scheduleSave();
     return true;
   }
@@ -2111,7 +2325,6 @@
       if (fillProductFromCommodity(i, k, t.value)) return;
     }
     state.products[i][k] = t.value;
-    refreshCommodityDatalist();
     scheduleSave();
   });
 
@@ -2470,7 +2683,7 @@
   function renderAll() {
     if (wsInput) wsInput.value = state.workspace || wsInput.value || "";
     applyPaths();
-    refreshCommodityDatalist();
+    enhanceCombos(document);
     renderIsfParties();
     renderBanks();
     renderForwarders();
