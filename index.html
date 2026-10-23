@@ -503,19 +503,19 @@
           <input data-path="company.legalName" placeholder="AGRO HUB INTERNATIONAL (PVT) LTD" />
         </label>
         <label class="field full">Shipper address — street
-          <input data-path="company.street" />
+          <input data-path="company.street" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore="true" />
         </label>
         <label class="field">City
-          <input data-path="company.city" data-combo="lov-cityPk" placeholder="Pick or type" autocomplete="off" />
+          <input data-path="company.city" data-combo="lov-cityPk" placeholder="Pick or type" autocomplete="one-time-code" />
         </label>
         <label class="field">State / province
-          <input data-path="company.state" />
+          <input data-path="company.state" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore="true" />
         </label>
         <label class="field">Postal code
-          <input data-path="company.postalCode" />
+          <input data-path="company.postalCode" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore="true" />
         </label>
         <label class="field">Country
-          <input data-path="company.country" data-combo="lov-country" placeholder="Pick or type" autocomplete="off" />
+          <input data-path="company.country" data-combo="lov-country" placeholder="Pick or type" autocomplete="one-time-code" />
         </label>
         <label class="field full">Shipper TEL / FAX
           <input data-path="company.shipperContact" />
@@ -1172,6 +1172,25 @@
     }
   }
 
+  /** Chrome ignores autocomplete=off on address-like fields and covers our picker. */
+  function guardAgainstBrowserAutofill(inp) {
+    if (!inp || inp.getAttribute("data-af-guard") === "1") return;
+    inp.setAttribute("data-af-guard", "1");
+    // Non-standard token — Chrome won't treat as address/country autofill
+    inp.setAttribute("autocomplete", "one-time-code");
+    inp.setAttribute("autocapitalize", "off");
+    inp.setAttribute("autocorrect", "off");
+    inp.setAttribute("spellcheck", "false");
+    inp.setAttribute("data-lpignore", "true"); // LastPass
+    inp.setAttribute("data-1p-ignore", "true"); // 1Password
+    inp.setAttribute("data-bwignore", "true"); // Bitwarden
+    // Readonly until focus — stops Chrome address overlay from opening on click
+    inp.setAttribute("readonly", "readonly");
+    inp.addEventListener("focus", function () {
+      setTimeout(function () { inp.removeAttribute("readonly"); }, 40);
+    });
+  }
+
   function enhanceCombos(root) {
     (root || document).querySelectorAll("input[data-combo], input[list]").forEach(function (inp) {
       var listId = inp.getAttribute("data-combo") || inp.getAttribute("list");
@@ -1180,8 +1199,7 @@
         inp.removeAttribute("list");
         inp.setAttribute("data-combo", listId);
       }
-      inp.setAttribute("autocomplete", "off");
-      inp.setAttribute("spellcheck", "false");
+      guardAgainstBrowserAutofill(inp);
       if (inp.closest(".combo")) return;
 
       var wrap = document.createElement("div");
@@ -1741,6 +1759,11 @@
 
   function applyPaths() {
     fillLovSelects();
+    // Address-adjacent fields (street, postal, etc.) also trigger Chrome autofill
+    document.querySelectorAll(
+      '[data-path="company.street"], [data-path="company.state"], [data-path="company.postalCode"],' +
+      '[data-path="company.city"], [data-path="company.country"], [data-path="company.countryOfOrigin"]'
+    ).forEach(guardAgainstBrowserAutofill);
     document.querySelectorAll("[data-path]").forEach(function (el) {
       var v = getByPath(state, el.getAttribute("data-path"));
       if (v == null) {
