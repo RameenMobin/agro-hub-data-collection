@@ -413,13 +413,14 @@
 
       <h3>ISF parties (when Agro Hub is seller)</h3>
       <p class="hint">
-        US shipments only. Use structured fields (name, address, contact).
-        Tick <strong>Same as shipper</strong> to copy from the legal / shipper block above.
-        Add more parties if you use extras beyond the usual four.
+        US shipments only — leave empty if you never file ISF. Add parties as needed
+        (seller, manufacturer, consolidator, stuffing, …). Tick
+        <strong>Same as shipper</strong> to copy from the legal / shipper block above.
       </p>
       <div id="isfPartiesList"></div>
       <div class="row-actions">
         <button type="button" id="addIsfParty">+ Add ISF party</button>
+        <button type="button" class="ghost" id="addIsfUsual" style="border-color:var(--line);color:var(--ink);background:#fff">Add usual 4 roles</button>
       </div>
 
       <h3>Banks on FI / FIA forms</h3>
@@ -1278,7 +1279,7 @@
     kind: KIND,
     workspace: "",
     company: {},
-    isfParties: defaultIsfParties(),
+    isfParties: [],
     banks: [],
     contacts: {},
     partners: { forwarders: defaultForwarders() },
@@ -1436,7 +1437,14 @@
       delete c.isfConsolidator;
       delete c.isfStuffing;
     }
-    if (!state.isfParties.length) state.isfParties = defaultIsfParties();
+    // Leave empty by default — user adds parties only if they file ISF.
+    // Collapse old drafts that only had the four blank starter rows.
+    if (state.isfParties.length === 4) {
+      var allBlank = state.isfParties.every(function (p) {
+        return !p.name && !p.street && !p.city && !p.contact && !p.fdaRegistration && !p.sameAsShipper;
+      });
+      if (allBlank) state.isfParties = [];
+    }
   }
 
   function shipperSnapshot() {
@@ -1468,6 +1476,10 @@
     ensureIsfParties();
     var root = document.getElementById("isfPartiesList");
     root.innerHTML = "";
+    if (!state.isfParties.length) {
+      root.innerHTML = '<p class="pack-empty">No ISF parties yet — skip if you don’t ship to the US, or add parties below.</p>';
+      return;
+    }
     state.isfParties.forEach(function (p, i) {
       var card = document.createElement("div");
       card.className = "cust-card";
@@ -1512,6 +1524,17 @@
     renderIsfParties();
     scheduleSave();
   });
+  document.getElementById("addIsfUsual").addEventListener("click", function () {
+    collectFromDom();
+    ensureIsfParties();
+    var have = {};
+    state.isfParties.forEach(function (p) { if (p.role) have[p.role] = true; });
+    ["seller", "manufacturer", "consolidator", "stuffing"].forEach(function (role) {
+      if (!have[role]) state.isfParties.push(emptyIsfParty(role));
+    });
+    renderIsfParties();
+    scheduleSave();
+  });
 
   document.getElementById("isfPartiesList").addEventListener("input", function (e) {
     var t = e.target;
@@ -1543,7 +1566,6 @@
     if (!e.target.hasAttribute("data-rm-isf")) return;
     collectFromDom();
     state.isfParties.splice(+e.target.getAttribute("data-rm-isf"), 1);
-    if (!state.isfParties.length) state.isfParties = defaultIsfParties();
     renderIsfParties();
     scheduleSave();
   });
@@ -2913,7 +2935,7 @@
     localStorage.removeItem(storageKey());
     state = {
       version: 1, kind: KIND, workspace: wsInput.value || "",
-      company: {}, isfParties: defaultIsfParties(),
+      company: {}, isfParties: [],
       banks: [], contacts: {}, partners: { forwarders: defaultForwarders() }, defaults: {},
       customers: [emptyCustomer()],
       products: [{ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" }],
