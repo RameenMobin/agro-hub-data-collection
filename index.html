@@ -270,20 +270,14 @@
       </div>
 
       <h3>ISF parties (when Agro Hub is seller)</h3>
-      <p class="hint">Write “same as shipper” if identical. US shipments only.</p>
-      <div class="grid">
-        <label class="field full">Seller — name + address + contact
-          <textarea data-path="company.isfSeller"></textarea>
-        </label>
-        <label class="field full">Manufacturer — name + address + contact
-          <textarea data-path="company.isfManufacturer"></textarea>
-        </label>
-        <label class="field full">Consolidator (if used)
-          <textarea data-path="company.isfConsolidator"></textarea>
-        </label>
-        <label class="field full">Stuffing location
-          <textarea data-path="company.isfStuffing"></textarea>
-        </label>
+      <p class="hint">
+        US shipments only. Use structured fields (name, address, contact).
+        Tick <strong>Same as shipper</strong> to copy from the legal / shipper block above.
+        Add more parties if you use extras beyond the usual four.
+      </p>
+      <div id="isfPartiesList"></div>
+      <div class="row-actions">
+        <button type="button" id="addIsfParty">+ Add ISF party</button>
       </div>
 
       <h3>Banks on FI / FIA forms</h3>
@@ -585,11 +579,45 @@
     };
   };
 
+  var emptyIsfParty = function (role) {
+    return {
+      role: role || "other",
+      roleLabel: "",
+      name: "",
+      street: "",
+      city: "",
+      state: "",
+      postalCode: "",
+      country: "",
+      contact: "",
+      fdaRegistration: "",
+      sameAsShipper: false
+    };
+  };
+
+  var defaultIsfParties = function () {
+    return [
+      emptyIsfParty("seller"),
+      emptyIsfParty("manufacturer"),
+      emptyIsfParty("consolidator"),
+      emptyIsfParty("stuffing")
+    ];
+  };
+
+  var ISF_ROLE_LABELS = {
+    seller: "1. Seller",
+    manufacturer: "2. Manufacturer",
+    consolidator: "5. Consolidator",
+    stuffing: "6. Stuffing location",
+    other: "Other"
+  };
+
   var state = {
     version: 1,
     kind: KIND,
     workspace: "",
     company: {},
+    isfParties: defaultIsfParties(),
     banks: [],
     contacts: {},
     partners: {},
@@ -679,6 +707,7 @@
       }
       if (!state.banks) state.banks = [];
       if (!state.documents) state.documents = {};
+      ensureIsfParties();
       renderAll();
       setStatus("Restored draft", true);
     } catch (e) {
@@ -698,6 +727,140 @@
         p.classList.toggle("active", p.id === "panel-" + id);
       });
     });
+  });
+
+  /* ---- ISF parties ---- */
+  function ensureIsfParties() {
+    if (!state.isfParties) state.isfParties = [];
+    // Migrate legacy free-text fields from older drafts
+    var c = state.company || {};
+    if (!state.isfParties.length && (c.isfSeller || c.isfManufacturer || c.isfConsolidator || c.isfStuffing)) {
+      state.isfParties = defaultIsfParties();
+      if (c.isfSeller) {
+        state.isfParties[0].name = c.isfSeller;
+        if (/same as shipper/i.test(c.isfSeller)) state.isfParties[0].sameAsShipper = true;
+      }
+      if (c.isfManufacturer) {
+        state.isfParties[1].name = c.isfManufacturer;
+        if (/same as shipper/i.test(c.isfManufacturer)) state.isfParties[1].sameAsShipper = true;
+      }
+      if (c.isfConsolidator) state.isfParties[2].name = c.isfConsolidator;
+      if (c.isfStuffing) state.isfParties[3].name = c.isfStuffing;
+      delete c.isfSeller;
+      delete c.isfManufacturer;
+      delete c.isfConsolidator;
+      delete c.isfStuffing;
+    }
+    if (!state.isfParties.length) state.isfParties = defaultIsfParties();
+  }
+
+  function shipperSnapshot() {
+    collectFromDom();
+    var c = state.company || {};
+    return {
+      name: c.legalName || "",
+      street: c.street || "",
+      city: c.city || "",
+      state: c.state || "",
+      postalCode: c.postalCode || "",
+      country: c.country || "",
+      contact: c.shipperContact || ""
+    };
+  }
+
+  function applyShipperToParty(p) {
+    var s = shipperSnapshot();
+    p.name = s.name;
+    p.street = s.street;
+    p.city = s.city;
+    p.state = s.state;
+    p.postalCode = s.postalCode;
+    p.country = s.country;
+    p.contact = s.contact;
+  }
+
+  function renderIsfParties() {
+    ensureIsfParties();
+    var root = document.getElementById("isfPartiesList");
+    root.innerHTML = "";
+    state.isfParties.forEach(function (p, i) {
+      var card = document.createElement("div");
+      card.className = "cust-card";
+      var roleOpts = ["seller", "manufacturer", "consolidator", "stuffing", "other"]
+        .map(function (r) {
+          return '<option value="' + r + '"' + (p.role === r ? " selected" : "") + ">" +
+            ISF_ROLE_LABELS[r] + "</option>";
+        })
+        .join("");
+      var disabled = p.sameAsShipper ? " disabled" : "";
+      card.innerHTML =
+        '<div class="head"><strong>ISF party ' + (i + 1) + '</strong>' +
+        '<button type="button" class="rm" data-rm-isf="' + i + '">Remove</button></div>' +
+        '<div class="grid">' +
+        '<label class="field">Role<select data-isf="' + i + '" data-k="role">' + roleOpts + "</select></label>" +
+        '<label class="field">Custom role label (if Other)<input data-isf="' + i + '" data-k="roleLabel" placeholder="e.g. Factory 2" /></label>' +
+        '<label class="field full" style="flex-direction:row;align-items:center;gap:8px;font-weight:500">' +
+        '<input type="checkbox" data-isf="' + i + '" data-k="sameAsShipper" ' + (p.sameAsShipper ? "checked" : "") + " />" +
+        "Same as shipper (copy from company block above)</label>" +
+        '<label class="field full">Name<input data-isf="' + i + '" data-k="name"' + disabled + " /></label>" +
+        '<label class="field full">Street / building<input data-isf="' + i + '" data-k="street"' + disabled + " /></label>" +
+        '<label class="field">City<input data-isf="' + i + '" data-k="city"' + disabled + " /></label>" +
+        '<label class="field">State / province<input data-isf="' + i + '" data-k="state"' + disabled + " /></label>" +
+        '<label class="field">Postal code<input data-isf="' + i + '" data-k="postalCode"' + disabled + " /></label>" +
+        '<label class="field">Country<input data-isf="' + i + '" data-k="country"' + disabled + " /></label>" +
+        '<label class="field">Contact (tel / email)<input data-isf="' + i + '" data-k="contact"' + disabled + " /></label>" +
+        '<label class="field">FDA registration (if any)<input data-isf="' + i + '" data-k="fdaRegistration"' + disabled + " /></label>" +
+        "</div>";
+      root.appendChild(card);
+      card.querySelectorAll("input[data-isf], select[data-isf]").forEach(function (el) {
+        var k = el.getAttribute("data-k");
+        if (el.type === "checkbox") return;
+        el.value = p[k] != null ? String(p[k]) : "";
+      });
+    });
+  }
+
+  document.getElementById("addIsfParty").addEventListener("click", function () {
+    collectFromDom();
+    ensureIsfParties();
+    state.isfParties.push(emptyIsfParty("other"));
+    renderIsfParties();
+    scheduleSave();
+  });
+
+  document.getElementById("isfPartiesList").addEventListener("input", function (e) {
+    var t = e.target;
+    if (!t.getAttribute("data-isf")) return;
+    var i = +t.getAttribute("data-isf");
+    var k = t.getAttribute("data-k");
+    if (t.type === "checkbox") return;
+    state.isfParties[i][k] = t.value;
+    scheduleSave();
+  });
+
+  document.getElementById("isfPartiesList").addEventListener("change", function (e) {
+    var t = e.target;
+    if (!t.getAttribute("data-isf")) return;
+    var i = +t.getAttribute("data-isf");
+    var k = t.getAttribute("data-k");
+    if (t.type === "checkbox" && k === "sameAsShipper") {
+      state.isfParties[i].sameAsShipper = !!t.checked;
+      if (t.checked) applyShipperToParty(state.isfParties[i]);
+      renderIsfParties();
+      scheduleSave();
+      return;
+    }
+    state.isfParties[i][k] = t.value;
+    scheduleSave();
+  });
+
+  document.getElementById("isfPartiesList").addEventListener("click", function (e) {
+    if (!e.target.hasAttribute("data-rm-isf")) return;
+    collectFromDom();
+    state.isfParties.splice(+e.target.getAttribute("data-rm-isf"), 1);
+    if (!state.isfParties.length) state.isfParties = defaultIsfParties();
+    renderIsfParties();
+    scheduleSave();
   });
 
   /* ---- banks ---- */
@@ -924,6 +1087,7 @@
   function renderAll() {
     if (wsInput) wsInput.value = state.workspace || wsInput.value || "";
     applyPaths();
+    renderIsfParties();
     renderBanks();
     renderCustomers();
     renderProducts();
@@ -1064,7 +1228,8 @@
     localStorage.removeItem(storageKey());
     state = {
       version: 1, kind: KIND, workspace: wsInput.value || "",
-      company: {}, banks: [], contacts: {}, partners: {}, defaults: {},
+      company: {}, isfParties: defaultIsfParties(),
+      banks: [], contacts: {}, partners: {}, defaults: {},
       customers: [emptyCustomer()],
       products: [{ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" }],
       documents: {}

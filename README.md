@@ -39,6 +39,20 @@ Do **not** connect the SilverBirch-FE monorepo.
   "version": 1,
   "kind": "agro-hub-data-collection",
   "company": {},
+  "isfParties": [
+    {
+      "role": "seller",
+      "name": "",
+      "street": "",
+      "city": "",
+      "state": "",
+      "postalCode": "",
+      "country": "",
+      "contact": "",
+      "fdaRegistration": "",
+      "sameAsShipper": false
+    }
+  ],
   "banks": [],
   "contacts": {},
   "partners": {},
