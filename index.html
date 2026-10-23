@@ -146,9 +146,43 @@
       display: block;
       width: 100%;
     }
-    .combo > input {
+    .combo > input,
+    .combo > .combo-display {
       width: 100%;
       padding-right: 34px;
+    }
+    .combo-display {
+      appearance: none;
+      -webkit-appearance: none;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 38px;
+      font: inherit;
+      color: var(--body);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 8px 34px 8px 10px;
+      background: #fafcfe;
+      cursor: pointer;
+      text-align: left;
+    }
+    .combo-display:focus {
+      outline: 2px solid rgba(17, 112, 224, 0.35);
+      border-color: var(--blue);
+    }
+    .combo-display.is-placeholder { color: var(--muted); font-weight: 400; }
+    .combo-select > select.combo-native {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+      opacity: 0;
+      pointer-events: none;
     }
     .combo-chevron {
       position: absolute;
@@ -159,6 +193,7 @@
       color: var(--muted);
       font-size: 11px;
       line-height: 1;
+      z-index: 1;
     }
     .combo.open .combo-chevron { color: var(--blue); }
     .combo-menu {
@@ -167,15 +202,18 @@
       left: 0;
       right: 0;
       top: calc(100% + 4px);
-      z-index: 60;
-      max-height: 260px;
+      z-index: 80;
+      max-height: min(280px, 45vh);
       overflow-y: auto;
+      overflow-x: hidden;
       overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
       background: #fff;
       border: 1px solid var(--line);
       border-radius: 8px;
       box-shadow: 0 14px 32px rgba(7, 35, 56, 0.14);
       padding: 4px 0;
+      touch-action: pan-y;
     }
     .combo.open .combo-menu { display: block; }
     .combo.open.drop-up .combo-menu {
@@ -217,6 +255,7 @@
       color: var(--muted);
     }
     table.data .combo { min-width: 8rem; }
+    table.data .combo-display { min-height: 34px; padding: 6px 32px 6px 8px; }
     table.data {
       width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 8px 0 10px;
     }
@@ -950,10 +989,11 @@
       });
       if (current) sel.value = current;
     });
-    enhanceCombos(document);
+    enhanceAllPickers(document);
+    document.querySelectorAll(".combo.combo-select").forEach(syncSelectDisplay);
   }
 
-  /* ---- themed combobox (replaces native datalist) ---- */
+  /* ---- themed combobox + select (replaces native datalist / OS menus) ---- */
   var activeCombo = null;
 
   function closeCombo(wrap) {
@@ -966,48 +1006,114 @@
     document.querySelectorAll(".combo.open").forEach(closeCombo);
   }
 
-  function renderComboMenu(wrap, filterText) {
-    var inp = wrap.querySelector("input");
-    var menu = wrap.querySelector(".combo-menu");
-    if (!inp || !menu) return;
-    var listId = inp.getAttribute("data-combo");
-    var q = String(filterText != null ? filterText : inp.value || "").trim().toLowerCase();
-    var opts = comboOptionsFor(listId).filter(function (o) {
-      if (!q) return true;
-      return (o.primary + " " + (o.secondary || "") + " " + (o.sku || "")).toLowerCase().indexOf(q) >= 0;
+  function selectLabelForValue(sel, value) {
+    var opts = sel.options;
+    for (var i = 0; i < opts.length; i++) {
+      if (opts[i].value === value) return opts[i].textContent || opts[i].value;
+    }
+    return value || "";
+  }
+
+  function syncSelectDisplay(wrap) {
+    var sel = wrap.querySelector("select");
+    var display = wrap.querySelector(".combo-display");
+    if (!sel || !display) return;
+    var label = selectLabelForValue(sel, sel.value);
+    var blank = !sel.value;
+    display.textContent = blank ? (sel.options[0] && sel.options[0].textContent) || "—" : label;
+    display.classList.toggle("is-placeholder", blank);
+  }
+
+  function comboOptsFromSelect(sel) {
+    return Array.prototype.map.call(sel.options, function (o) {
+      return {
+        value: o.value,
+        primary: o.textContent || o.value || "—",
+        secondary: "",
+        sku: "",
+        description: ""
+      };
     });
-    if (!opts.length) {
-      menu.innerHTML = '<div class="combo-empty">No matches — keep typing a custom value</div>';
+  }
+
+  function renderComboMenu(wrap, filterText) {
+    var menu = wrap.querySelector(".combo-menu");
+    if (!menu) return;
+    var sel = wrap.querySelector("select");
+    var inp = wrap.querySelector("input[data-combo]");
+    var q = String(filterText != null ? filterText : "").trim().toLowerCase();
+    var opts;
+    if (sel) {
+      opts = comboOptsFromSelect(sel);
+    } else if (inp) {
+      opts = comboOptionsFor(inp.getAttribute("data-combo"));
+    } else {
       return;
     }
-    menu.innerHTML = opts.map(function (o, idx) {
-      return '<button type="button" class="combo-item' + (idx === 0 ? " active" : "") + '" data-value="' +
+    if (q && inp) {
+      opts = opts.filter(function (o) {
+        return (o.primary + " " + (o.secondary || "") + " " + (o.sku || "")).toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    if (!opts.length) {
+      menu.innerHTML = '<div class="combo-empty">' +
+        (inp ? "No matches — keep typing a custom value" : "No options") + "</div>";
+      return;
+    }
+    var current = sel ? sel.value : (inp ? inp.value : "");
+    menu.innerHTML = opts.map(function (o) {
+      var active = String(o.value) === String(current);
+      return '<button type="button" class="combo-item' + (active ? " active" : "") + '" data-value="' +
         escapeHtml(o.value) + '" data-sku="' + escapeHtml(o.sku || "") + '" data-desc="' +
         escapeHtml(o.description || "") + '">' +
         '<span class="primary">' + escapeHtml(o.primary) + "</span>" +
         (o.secondary ? '<span class="secondary">' + escapeHtml(o.secondary) + "</span>" : "") +
         "</button>";
     }).join("");
+    if (!menu.querySelector(".combo-item.active")) {
+      var first = menu.querySelector(".combo-item");
+      if (first) first.classList.add("active");
+    }
   }
 
-  function openCombo(wrap) {
+  function openCombo(wrap, filterText) {
     if (!wrap) return;
-    closeAllCombos();
-    renderComboMenu(wrap, wrap.querySelector("input").value);
+    if (activeCombo && activeCombo !== wrap) closeCombo(activeCombo);
+    // Show full list on open; only filter when filterText is explicitly passed (typing)
+    renderComboMenu(wrap, filterText != null ? filterText : "");
     wrap.classList.add("open");
+    wrap.classList.remove("drop-up");
     var rect = wrap.getBoundingClientRect();
-    if (rect.bottom + 280 > window.innerHeight && rect.top > 280) {
+    if (rect.bottom + 300 > window.innerHeight && rect.top > 300) {
       wrap.classList.add("drop-up");
     }
     activeCombo = wrap;
+    var menu = wrap.querySelector(".combo-menu");
+    var active = menu && menu.querySelector(".combo-item.active");
+    if (active) {
+      try { active.scrollIntoView({ block: "nearest" }); } catch (e) {}
+    }
   }
 
   function pickComboItem(wrap, btn) {
-    var inp = wrap.querySelector("input");
-    if (!inp || !btn) return;
+    if (!wrap || !btn) return;
+    var inp = wrap.querySelector("input[data-combo]");
+    var sel = wrap.querySelector("select");
     var val = btn.getAttribute("data-value") || "";
+
+    if (sel) {
+      sel.value = val;
+      syncSelectDisplay(wrap);
+      closeCombo(wrap);
+      sel.dispatchEvent(new Event("input", { bubbles: true }));
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+      var display = wrap.querySelector(".combo-display");
+      if (display) display.focus();
+      return;
+    }
+
+    if (!inp) return;
     var listId = inp.getAttribute("data-combo");
-    // Commodity SKU field prefers sku when available
     if (listId === "lov-commodity" && inp.getAttribute("data-k") === "sku") {
       val = btn.getAttribute("data-sku") || val;
     } else if (listId === "lov-commodity" && inp.getAttribute("data-k") === "productSku") {
@@ -1021,6 +1127,49 @@
     inp.dispatchEvent(new Event("input", { bubbles: true }));
     inp.dispatchEvent(new Event("change", { bubbles: true }));
     inp.focus();
+  }
+
+  function wireComboMenu(wrap, menu) {
+    menu.addEventListener("mousedown", function (e) {
+      var btn = e.target.closest(".combo-item");
+      if (!btn) return;
+      e.preventDefault();
+      pickComboItem(wrap, btn);
+    });
+    // Keep wheel / trackpad scroll inside the menu (don't close or scroll the page)
+    menu.addEventListener("wheel", function (e) {
+      var el = menu;
+      var delta = e.deltaY;
+      var atTop = el.scrollTop <= 0;
+      var atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+      if ((delta < 0 && atTop) || (delta > 0 && atBottom)) {
+        // still allow scroll inside; only stop page scroll when menu can move
+      }
+      e.stopPropagation();
+    }, { passive: true });
+  }
+
+  function handleComboKeydown(wrap, menu, e) {
+    var items = Array.prototype.slice.call(menu.querySelectorAll(".combo-item"));
+    var cur = menu.querySelector(".combo-item.active");
+    var idx = items.indexOf(cur);
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (!wrap.classList.contains("open")) { openCombo(wrap); return; }
+      if (cur) cur.classList.remove("active");
+      var next = items[Math.min(items.length - 1, Math.max(0, idx) + 1)] || items[0];
+      if (next) { next.classList.add("active"); next.scrollIntoView({ block: "nearest" }); }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (cur) cur.classList.remove("active");
+      var prev = items[Math.max(0, idx - 1)] || items[0];
+      if (prev) { prev.classList.add("active"); prev.scrollIntoView({ block: "nearest" }); }
+    } else if (e.key === "Enter" && wrap.classList.contains("open") && cur) {
+      e.preventDefault();
+      pickComboItem(wrap, cur);
+    } else if (e.key === "Escape") {
+      closeCombo(wrap);
+    }
   }
 
   function enhanceCombos(root) {
@@ -1050,49 +1199,76 @@
       menu.className = "combo-menu";
       menu.setAttribute("role", "listbox");
       wrap.appendChild(menu);
+      wireComboMenu(wrap, menu);
 
       inp.addEventListener("focus", function () { openCombo(wrap); });
       inp.addEventListener("click", function () { openCombo(wrap); });
       inp.addEventListener("input", function () {
-        if (!wrap.classList.contains("open")) openCombo(wrap);
-        else renderComboMenu(wrap, inp.value);
+        // Filter only while typing
+        openCombo(wrap, inp.value);
       });
       inp.addEventListener("keydown", function (e) {
-        var items = Array.prototype.slice.call(menu.querySelectorAll(".combo-item"));
-        var cur = menu.querySelector(".combo-item.active");
-        var idx = items.indexOf(cur);
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          if (!wrap.classList.contains("open")) { openCombo(wrap); return; }
-          if (cur) cur.classList.remove("active");
-          var next = items[Math.min(items.length - 1, Math.max(0, idx) + 1)] || items[0];
-          if (next) { next.classList.add("active"); next.scrollIntoView({ block: "nearest" }); }
-        } else if (e.key === "ArrowUp") {
-          e.preventDefault();
-          if (cur) cur.classList.remove("active");
-          var prev = items[Math.max(0, idx - 1)] || items[0];
-          if (prev) { prev.classList.add("active"); prev.scrollIntoView({ block: "nearest" }); }
-        } else if (e.key === "Enter" && wrap.classList.contains("open") && cur) {
-          e.preventDefault();
-          pickComboItem(wrap, cur);
-        } else if (e.key === "Escape") {
-          closeCombo(wrap);
-        }
-      });
-      menu.addEventListener("mousedown", function (e) {
-        var btn = e.target.closest(".combo-item");
-        if (!btn) return;
-        e.preventDefault();
-        pickComboItem(wrap, btn);
+        handleComboKeydown(wrap, menu, e);
       });
     });
+  }
+
+  function enhanceSelects(root) {
+    (root || document).querySelectorAll("select").forEach(function (sel) {
+      if (sel.closest(".combo")) return;
+      if (sel.getAttribute("data-skip-combo") === "1") return;
+
+      var wrap = document.createElement("div");
+      wrap.className = "combo combo-select";
+      sel.parentNode.insertBefore(wrap, sel);
+      wrap.appendChild(sel);
+      sel.classList.add("combo-native");
+
+      var display = document.createElement("button");
+      display.type = "button";
+      display.className = "combo-display";
+      display.setAttribute("aria-haspopup", "listbox");
+      wrap.insertBefore(display, sel);
+
+      var chev = document.createElement("span");
+      chev.className = "combo-chevron";
+      chev.setAttribute("aria-hidden", "true");
+      chev.textContent = "▾";
+      wrap.appendChild(chev);
+
+      var menu = document.createElement("div");
+      menu.className = "combo-menu";
+      menu.setAttribute("role", "listbox");
+      wrap.appendChild(menu);
+      wireComboMenu(wrap, menu);
+
+      syncSelectDisplay(wrap);
+
+      display.addEventListener("click", function (e) {
+        e.preventDefault();
+        if (wrap.classList.contains("open")) closeCombo(wrap);
+        else openCombo(wrap);
+      });
+      display.addEventListener("keydown", function (e) {
+        handleComboKeydown(wrap, menu, e);
+      });
+      sel.addEventListener("change", function () { syncSelectDisplay(wrap); });
+    });
+  }
+
+  function enhanceAllPickers(root) {
+    enhanceCombos(root);
+    enhanceSelects(root);
   }
 
   document.addEventListener("mousedown", function (e) {
     if (activeCombo && !activeCombo.contains(e.target)) closeAllCombos();
   });
-  document.addEventListener("scroll", function () {
-    if (activeCombo) closeAllCombos();
+  // Close on page scroll, but NOT when scrolling inside the open menu
+  document.addEventListener("scroll", function (e) {
+    if (!activeCombo) return;
+    if (e.target && activeCombo.contains(e.target)) return;
+    closeAllCombos();
   }, true);
 
   function selectOpts(list, selected, includeBlank) {
@@ -1742,7 +1918,7 @@
         if (el.type === "checkbox") return;
         el.value = p[k] != null ? String(p[k]) : "";
       });
-      enhanceCombos(card);
+      enhanceAllPickers(card);
     });
   }
 
@@ -1905,7 +2081,7 @@
         }
         el.value = f[k] || "";
       });
-      enhanceCombos(card);
+      enhanceAllPickers(card);
     });
   }
 
@@ -1988,6 +2164,7 @@
       });
       var other = tr.querySelector('[data-k="nameOther"]');
       if (other) other.style.display = (!nameInLov && b.name) || (tr.querySelector('[data-k="name"]').value === "Other") ? "" : "none";
+      enhanceAllPickers(tr);
     });
   }
 
@@ -2016,7 +2193,8 @@
     var i = +t.getAttribute("data-bank");
     var k = t.getAttribute("data-k");
     if (k === "name") {
-      var other = t.parentElement.querySelector('[data-k="nameOther"]');
+      var cell = t.closest("td") || t.parentElement;
+      var other = cell.querySelector('[data-k="nameOther"]');
       if (t.value === "Other") {
         if (other) { other.style.display = ""; state.banks[i].name = other.value || ""; }
       } else {
@@ -2139,7 +2317,7 @@
         }
         el.value = c[k] || "";
       });
-      enhanceCombos(card);
+      enhanceAllPickers(card);
     });
   }
 
@@ -2263,7 +2441,7 @@
       tr.querySelectorAll("input").forEach(function (inp) {
         inp.value = p[inp.getAttribute("data-k")] || "";
       });
-      enhanceCombos(tr);
+      enhanceAllPickers(tr);
     });
   }
 
@@ -2683,7 +2861,7 @@
   function renderAll() {
     if (wsInput) wsInput.value = state.workspace || wsInput.value || "";
     applyPaths();
-    enhanceCombos(document);
+    enhanceAllPickers(document);
     renderIsfParties();
     renderBanks();
     renderForwarders();
