@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agro Hub × TraceRoot — Export data collection</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Inter+Tight:wght@400;500;600&family=Jost:wght@600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #072338;
+      --body: #2c4257;
+      --muted: #6a8199;
+      --line: #dde5ee;
+      --navy: #0F477B;
+      --blue: #1170E0;
+      --cyan: #36BBC9;
+      --soft: #f3f7fb;
+      --page: #eef3f8;
+      --card: #fff;
+      --ok: #1f6b3a;
+      --ok-soft: #e8f5ec;
+      --warn: #8a5a12;
+      --warn-soft: #faf3e6;
+      --radius: 12px;
+      --shadow: 0 8px 28px rgba(7, 35, 56, 0.07);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 14.5px/1.45 "Inter Tight", system-ui, sans-serif;
+      color: var(--body);
+      background: var(--page);
+      min-height: 100vh;
+    }
+    .toolbar {
+      position: sticky; top: 0; z-index: 20;
+      display: flex; flex-wrap: wrap; gap: 10px 14px;
+      align-items: center; justify-content: space-between;
+      padding: 12px 18px;
+      background: rgba(7, 35, 56, 0.94);
+      color: #fff;
+      backdrop-filter: blur(8px);
+    }
+    .toolbar b { font: 600 14px "Jost", sans-serif; }
+    .toolbar .sub { font-size: 12px; color: #9eb4c9; }
+    .toolbar-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    #saveStatus { font-size: 12px; color: #9eb4c9; min-width: 7rem; }
+    #saveStatus.ok { color: #7dceb0; }
+    button, .file-btn {
+      appearance: none; font: 600 13px "Inter Tight", sans-serif;
+      padding: 8px 12px; border-radius: 7px; cursor: pointer; border: 0;
+    }
+    button.pri { background: var(--cyan); color: var(--ink); }
+    button.ghost, .file-btn {
+      background: transparent; color: #fff;
+      border: 1px solid rgba(255,255,255,0.28);
+    }
+    button.ghost:hover, .file-btn:hover { background: rgba(255,255,255,0.08); }
+    .file-btn { display: inline-block; }
+    .file-btn input { display: none; }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 22px 16px 80px; }
+    .intro {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 22px 24px; margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+    .intro .kicker {
+      font: 500 11px "IBM Plex Mono", monospace;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--cyan); margin: 0 0 6px;
+    }
+    .intro h1 {
+      font: 600 24px/1.2 "Inter Tight", sans-serif; color: var(--ink); margin: 0 0 8px;
+    }
+    .intro p { margin: 0 0 8px; color: var(--muted); max-width: 40rem; }
+    .promise {
+      margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+      background: var(--ok-soft); border-left: 4px solid var(--ok); font-size: 13.5px; color: var(--ink);
+    }
+    .tabs {
+      display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px;
+      position: sticky; top: 58px; z-index: 15;
+      background: var(--page); padding: 8px 0;
+    }
+    .tabs button {
+      background: var(--card); border: 1px solid var(--line); color: var(--ink);
+      font-weight: 500; font-size: 13px; padding: 7px 12px;
+    }
+    .tabs button[aria-selected="true"] {
+      background: var(--navy); color: #fff; border-color: var(--navy);
+    }
+    .panel {
+      display: none;
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 20px 22px 24px;
+      box-shadow: var(--shadow);
+    }
+    .panel.active { display: block; }
+    .panel h2 {
+      font: 500 11px "IBM Plex Mono", monospace;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--navy); margin: 0 0 6px; padding-bottom: 6px;
+      border-bottom: 1px solid var(--line);
+    }
+    .panel h3 {
+      font: 600 15px "Inter Tight", sans-serif; color: var(--ink);
+      margin: 18px 0 8px;
+    }
+    .hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+    .grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px;
+    }
+    .grid .full { grid-column: 1 / -1; }
+    label.field {
+      display: flex; flex-direction: column; gap: 4px;
+      font-size: 12px; font-weight: 600; color: var(--ink);
+    }
+    label.field span.why { font-weight: 400; color: var(--muted); font-size: 11.5px; }
+    input, select, textarea {
+      font: inherit; color: var(--body);
+      border: 1px solid var(--line); border-radius: 7px;
+      padding: 8px 10px; background: #fafcfe;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: 2px solid rgba(17, 112, 224, 0.35); border-color: var(--blue);
+    }
+    textarea { min-height: 64px; resize: vertical; }
+    table.data {
+      width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 8px 0 10px;
+    }
+    table.data th, table.data td {
+      text-align: left; vertical-align: top;
+      padding: 6px 6px; border-bottom: 1px solid var(--line);
+    }
+    table.data th {
+      font: 500 9.5px "IBM Plex Mono", monospace;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--muted); background: var(--soft);
+    }
+    table.data input, table.data select { width: 100%; padding: 6px 8px; }
+    .row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 4px; }
+    .row-actions button { border: 1px solid var(--line); background: #fff; color: var(--ink); }
+    .cust-card {
+      border: 1px solid var(--line); border-radius: 10px;
+      padding: 14px 14px 10px; margin: 0 0 14px; background: #fafcfe;
+    }
+    .cust-card .head {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 8px; margin-bottom: 10px;
+    }
+    .cust-card .head strong { color: var(--ink); }
+    .cust-card .rm {
+      font-size: 12px; padding: 5px 10px;
+      border: 1px solid var(--line); background: #fff; color: #8b2e2e;
+    }
+    .checks { list-style: none; margin: 0; padding: 0; }
+    .checks li {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 8px 0; border-bottom: 1px dotted #e3e8ef; font-size: 13.5px;
+    }
+    .checks li label { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; flex: 1; }
+    .checks input { margin-top: 3px; }
+    .tag {
+      display: inline-block; font: 500 9.5px/1 "IBM Plex Mono", monospace;
+      padding: 3px 6px; border-radius: 3px; margin-right: 6px; white-space: nowrap;
+    }
+    .tag-doc { background: #e7f1fe; color: var(--blue); }
+    .tag-email { background: #e1f9f0; color: #0b7a57; }
+    .tag-note { background: var(--soft); color: #47688B; }
+    .legend { display: flex; flex-wrap: wrap; gap: 10px 14px; margin: 0 0 12px; font-size: 13px; }
+    .csv-box {
+      margin: 12px 0; padding: 12px; border-radius: 8px;
+      background: var(--warn-soft); border-left: 3px solid var(--warn); font-size: 13px;
+    }
+    .csv-box .row-actions { margin-top: 8px; }
+    .csv-box button, .csv-box .file-btn {
+      border: 1px solid #d4b48a; background: #fff; color: var(--ink);
+    }
+    footer.foot {
+      margin-top: 20px; font-size: 12px; color: var(--muted); text-align: center;
+    }
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+      .tabs { top: 96px; }
+    }
+    @media print {
+      .toolbar, .tabs, .row-actions, .csv-box, .file-btn { display: none !important; }
+      .panel { display: block !important; box-shadow: none; border: 0; page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <div>
+      <b>Agro Hub × TraceRoot</b>
+      <div class="sub">Export desk — data collection</div>
+    </div>
+    <div class="toolbar-actions">
+      <span id="saveStatus">Ready</span>
+      <label class="field" style="flex-direction:row;align-items:center;gap:6px;font-weight:500;color:#c5d6e6;font-size:12px">
+        Draft
+        <input id="workspaceName" name="workspaceName" placeholder="e.g. Agro Hub Apr 2026" style="width:11rem;padding:6px 8px" />
+      </label>
+      <button type="button" class="ghost" id="btnPrint">Print</button>
+      <button type="button" class="ghost" id="btnClear">Clear draft</button>
+      <button type="button" class="pri" id="btnJson">Download JSON</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="intro">
+      <p class="kicker">Data collection portal</p>
+      <h1>Tell us how your export desk works</h1>
+      <p>
+        Fill company details, every export customer, products, and tick which
+        documents / email templates you can share. Progress saves in this browser.
+        When done, download the JSON and email it to TraceRoot (attach sample files separately).
+      </p>
+      <div class="promise">
+        Prefer Excel? Use <strong>CSV templates</strong> on the Customers and Products tabs,
+        fill them offline, then Import CSV. No passwords or PSW logins needed here.
+      </div>
+    </div>
+
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button type="button" role="tab" aria-selected="true" data-tab="company">1. Company</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="customers">2. Customers</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="products">3. Products</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="partners">4. Partners</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="docs">5. Documents</button>
+    </nav>
+
+    <!-- COMPANY -->
+    <section class="panel active" id="panel-company" role="tabpanel">
+      <h2>1. Agro Hub — your company</h2>
+      <p class="hint">Shipper block on B/L, CI, ISF, and e-COO. Match the wording on your documents.</p>
+
+      <h3>Legal / shipper</h3>
+      <div class="grid" id="companyFields">
+        <label class="field full">Legal company name
+          <span class="why">SHIPPER on B/L and invoices</span>
+          <input data-path="company.legalName" placeholder="AGRO HUB INTERNATIONAL (PVT) LTD" />
+        </label>
+        <label class="field full">Shipper address — street
+          <input data-path="company.street" />
+        </label>
+        <label class="field">City
+          <input data-path="company.city" placeholder="KARACHI" />
+        </label>
+        <label class="field">State / province
+          <input data-path="company.state" />
+        </label>
+        <label class="field">Postal code
+          <input data-path="company.postalCode" />
+        </label>
+        <label class="field">Country
+          <input data-path="company.country" placeholder="PAKISTAN" />
+        </label>
+        <label class="field full">Shipper TEL / FAX
+          <input data-path="company.shipperContact" />
+        </label>
+        <label class="field">FDA registration number
+          <input data-path="company.fdaRegistrationNo" />
+        </label>
+        <label class="field">Default POL
+          <input data-path="company.defaultPol" placeholder="Karachi" />
+        </label>
+        <label class="field">Country of origin (default)
+          <input data-path="company.countryOfOrigin" placeholder="Pakistan" />
+        </label>
+      </div>
+
+      <h3>ISF parties (when Agro Hub is seller)</h3>
+      <p class="hint">Write “same as shipper” if identical. US shipments only.</p>
+      <div class="grid">
+        <label class="field full">Seller — name + address + contact
+          <textarea data-path="company.isfSeller"></textarea>
+        </label>
+        <label class="field full">Manufacturer — name + address + contact
+          <textarea data-path="company.isfManufacturer"></textarea>
+        </label>
+        <label class="field full">Consolidator (if used)
+          <textarea data-path="company.isfConsolidator"></textarea>
+        </label>
+        <label class="field full">Stuffing location
+          <textarea data-path="company.isfStuffing"></textarea>
+        </label>
+      </div>
+
+      <h3>Banks on FI / FIA forms</h3>
+      <table class="data" id="banksTable">
+        <thead>
+          <tr>
+            <th>Bank name</th>
+            <th>IBAN / account</th>
+            <th>FI email / contact</th>
+            <th>Notes</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div class="row-actions">
+        <button type="button" id="addBank">+ Add bank</button>
+      </div>
+
+      <h3>Internal contacts</h3>
+      <div class="grid">
+        <label class="field">Sales — name
+          <input data-path="contacts.salesName" />
+        </label>
+        <label class="field">Sales — email
+          <input type="email" data-path="contacts.salesEmail" />
+        </label>
+        <label class="field">Export desk — name
+          <input data-path="contacts.exportName" />
+        </label>
+        <label class="field">Export desk — email
+          <input type="email" data-path="contacts.exportEmail" />
+        </label>
+        <label class="field">Production — name
+          <input data-path="contacts.productionName" />
+        </label>
+        <label class="field">Production — email
+          <input type="email" data-path="contacts.productionEmail" />
+        </label>
+        <label class="field">Finance / AR — name
+          <input data-path="contacts.financeName" />
+        </label>
+        <label class="field">Finance / AR — email
+          <input type="email" data-path="contacts.financeEmail" />
+        </label>
+      </div>
+
+      <h3>Default commercial rules</h3>
+      <div class="grid">
+        <label class="field">Default pallet type
+          <select data-path="defaults.palletType">
+            <option value="">—</option>
+            <option value="non_wood">Non-wood</option>
+            <option value="wood">Wood</option>
+            <option value="depends">Depends (explain in notes)</option>
+          </select>
+        </label>
+        <label class="field">Default freight marking
+          <input data-path="defaults.freightMarking" placeholder="FREIGHT PREPAID" />
+        </label>
+        <label class="field full">Documents usually listed on PI
+          <textarea data-path="defaults.documentsOnPi" placeholder="Commercial invoice, packing list, OBL, COO…"></textarea>
+        </label>
+        <label class="field full">Physical bank set (what you print)
+          <textarea data-path="defaults.bankPrintSet"></textarea>
+        </label>
+        <label class="field full">AR reminder habit
+          <input data-path="defaults.arReminderCadence" placeholder="7 days before due, on due, +7" />
+        </label>
+        <label class="field full">Pallet / other notes
+          <textarea data-path="defaults.notes"></textarea>
+        </label>
+      </div>
+    </section>
+
+    <!-- CUSTOMERS -->
+    <section class="panel" id="panel-customers" role="tabpanel">
+      <h2>2. Customers</h2>
+      <p class="hint">One card per export buyer. Add as many as you need.</p>
+
+      <div class="csv-box">
+        <strong>CSV option</strong> — download a blank template, fill in Excel, then import.
+        <div class="row-actions">
+          <button type="button" id="dlCustCsv">Download customers CSV template</button>
+          <label class="file-btn">Import customers CSV
+            <input type="file" id="importCustCsv" accept=".csv,text/csv" />
+          </label>
+        </div>
+      </div>
+
+      <div id="customersList"></div>
+      <div class="row-actions">
+        <button type="button" id="addCustomer">+ Add customer</button>
+      </div>
+    </section>
+
+    <!-- PRODUCTS -->
+    <section class="panel" id="panel-products" role="tabpanel">
+      <h2>3. Product / SKU catalog</h2>
+      <p class="hint">Products you ship — descriptions and HS codes as on documents.</p>
+
+      <div class="csv-box">
+        <strong>CSV option</strong>
+        <div class="row-actions">
+          <button type="button" id="dlProdCsv">Download products CSV template</button>
+          <label class="file-btn">Import products CSV
+            <input type="file" id="importProdCsv" accept=".csv,text/csv" />
+          </label>
+        </div>
+      </div>
+
+      <table class="data" id="productsTable">
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>Description</th>
+            <th>Unit</th>
+            <th>Typical qty</th>
+            <th>Unit price</th>
+            <th>HS code</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div class="row-actions">
+        <button type="button" id="addProduct">+ Add product</button>
+      </div>
+    </section>
+
+    <!-- PARTNERS -->
+    <section class="panel" id="panel-partners" role="tabpanel">
+      <h2>4. External partners</h2>
+      <p class="hint">Forwarders, clearing agent, fumigator, ISF agent.</p>
+      <div class="grid">
+        <label class="field">Primary forwarder — name
+          <input data-path="partners.forwarderName" />
+        </label>
+        <label class="field">Forwarder — email / phone
+          <input data-path="partners.forwarderContact" />
+        </label>
+        <label class="field full">Forwarder notes (portal vs email B/L)
+          <input data-path="partners.forwarderNotes" placeholder="e.g. Seagold email; Gama portal" />
+        </label>
+        <label class="field">Clearing agent — name
+          <input data-path="partners.clearingName" />
+        </label>
+        <label class="field">Clearing agent — email / phone
+          <input data-path="partners.clearingContact" />
+        </label>
+        <label class="field">Fumigator — name
+          <input data-path="partners.fumigatorName" />
+        </label>
+        <label class="field">Fumigator — email / phone
+          <input data-path="partners.fumigatorContact" />
+        </label>
+        <label class="field">Flexport / ISF agent — name
+          <input data-path="partners.isfAgentName" />
+        </label>
+        <label class="field">ISF agent — email
+          <input data-path="partners.isfAgentEmail" />
+        </label>
+        <label class="field full">Other partners / notes
+          <textarea data-path="partners.notes"></textarea>
+        </label>
+      </div>
+    </section>
+
+    <!-- DOCS -->
+    <section class="panel" id="panel-docs" role="tabpanel">
+      <h2>5. Source documents &amp; email templates</h2>
+      <p class="hint">
+        Tick what you can send. Attach files when you email the JSON to TraceRoot.
+      </p>
+      <div class="legend">
+        <span><span class="tag tag-doc">Document</span> PDF / Word / Excel / scan</span>
+        <span><span class="tag tag-email">Email</span> Subject + body example or template</span>
+        <span><span class="tag tag-note">Note</span> Short written answer</span>
+      </div>
+      <div id="docsList"></div>
+      <h3>Extra notes</h3>
+      <label class="field full">Anything else we should know
+        <textarea data-path="documents.extraNotes" rows="4"></textarea>
+      </label>
+    </section>
+
+    <p class="foot">
+      When finished: <strong>Download JSON</strong> → email to TraceRoot with sample files
+      (PDFs, email examples, and any Excel masters).
+    </p>
+  </div>
+
+<script>
+(function () {
+  var STORAGE_PREFIX = "traceroot.agroHubData.v1.";
+  var LAST_WS_KEY = "traceroot.agroHubData.lastWorkspace";
+  var KIND = "agro-hub-data-collection";
+
+  var CUST_CSV_HEADERS = [
+    "name", "email", "country",
+    "shipTo", "consignee", "consigneeAddress", "consigneeCountry",
+    "notifyParty", "notifyAddress", "notifyContact", "pod",
+    "paymentTerms", "incoterms", "freightMarking",
+    "productSku", "productDescription", "quantity", "unit", "unitPrice", "hsCode",
+    "isfRequired", "fdaRegistrationNo", "importerOfRecord", "consigneeNumber", "isfSendToEmail",
+    "forwarder", "blPath", "requiredDocPack", "customerCiDifferent"
+  ];
+
+  var PROD_CSV_HEADERS = [
+    "sku", "description", "unit", "typicalQty", "unitPrice", "hsCode"
+  ];
+
+  var DOC_ITEMS = [
+    { group: "00–01 Proforma invoice", items: [
+      { id: "pi_filled_pdf", tag: "doc", label: "Filled proforma invoice PDF (1–2 examples)" },
+      { id: "pi_blank_template", tag: "doc", label: "Blank PI template (Word / Excel / PDF)" },
+      { id: "pi_sales_email", tag: "email", label: "Sales → Export email attaching the PI" },
+      { id: "pi_amend_email", tag: "email", label: "PI amendment / price-change email from Sales" }
+    ]},
+    { group: "02 CRO + loading date", items: [
+      { id: "cro_pdf", tag: "doc", label: "Filled CRO / booking confirmation PDF" },
+      { id: "loading_date_email", tag: "email", label: "How estimated loading date is communicated" }
+    ]},
+    { group: "03 Commercial invoice / SAP", items: [
+      { id: "ci_filled_pdf", tag: "doc", label: "Filled commercial invoice PDF" },
+      { id: "ci_blank_template", tag: "doc", label: "Blank CI template" },
+      { id: "ci_sap_note", tag: "note", label: "Note: how CI is posted in SAP (typed fields)" }
+    ]},
+    { group: "04 Container + gate pass", items: [
+      { id: "gate_pass_filled", tag: "doc", label: "Outward gate pass photo / scan (filled)" },
+      { id: "gate_pass_blank", tag: "doc", label: "Blank gate-pass form" },
+      { id: "container_msg", tag: "email", label: "How container number arrives (email / WhatsApp)" }
+    ]},
+    { group: "05 Customs invoice + FIA", items: [
+      { id: "customs_inv_filled", tag: "doc", label: "Filled customs invoice (PDF / Excel)" },
+      { id: "customs_inv_blank", tag: "doc", label: "Blank customs invoice template" },
+      { id: "fi_request_filled", tag: "doc", label: "Filled HBL FI request Excel" },
+      { id: "fi_request_blank", tag: "doc", label: "Blank FI request template" },
+      { id: "fi_psw_pdf", tag: "doc", label: "PSW / bank FI PDF after issue" },
+      { id: "fi_bank_amend_email", tag: "email", label: "Bank “correct and resend” email" },
+      { id: "fi_send_email", tag: "email", label: "Outbound email when sending FI form to bank" }
+    ]},
+    { group: "06 Clearing agent + GD", items: [
+      { id: "clearing_pack_email", tag: "email", label: "Email to clearing agent (body + attachment list)" },
+      { id: "gd_pdf", tag: "doc", label: "Filled GD PDF from PSW" }
+    ]},
+    { group: "07 Fumigation (wood only)", items: [
+      { id: "affidavit_blank", tag: "doc", label: "Blank affidavit template" },
+      { id: "tc_sample", tag: "doc", label: "Treatment / fumigation certificate sample" },
+      { id: "phyto_sample", tag: "doc", label: "Phytosanitary certificate sample" },
+      { id: "fumigator_email", tag: "email", label: "Email to fumigator requesting treatment" },
+      { id: "psw_treatment_note", tag: "note", label: "Note / screenshot of PSW treatment fields" }
+    ]},
+    { group: "08 Draft BL + OBL", items: [
+      { id: "bl_format_template", tag: "doc", label: "BL FORMAT draft template (Word)" },
+      { id: "bl_checking_email", tag: "email", label: "Checking-copy email from forwarder / line" },
+      { id: "bl_approve_email", tag: "email", label: "Your Approved / correction reply" },
+      { id: "obl_scan", tag: "doc", label: "Filled HBL / OBL scan" },
+      { id: "bl_path_note", tag: "note", label: "Note: forwarder → portal or email path" }
+    ]},
+    { group: "09 Packing list + e-COO", items: [
+      { id: "packing_list_filled", tag: "doc", label: "Filled packing list PDF" },
+      { id: "packing_list_blank", tag: "doc", label: "Blank packing-list template" },
+      { id: "ecoo_sample", tag: "doc", label: "Sample e-COO PDF from PSW" },
+      { id: "vgm_form", tag: "doc", label: "VGM form (if used separately)" }
+    ]},
+    { group: "10 ISF (US)", items: [
+      { id: "isf_sheet_filled", tag: "doc", label: "Filled Flexport ISF sheet (Excel)" },
+      { id: "isf_sheet_blank", tag: "doc", label: "Blank ISF template" },
+      { id: "isf_send_email", tag: "email", label: "Email sending ISF to customer / agent" },
+      { id: "isf_confirm_email", tag: "email", label: "Filing-confirmation email" }
+    ]},
+    { group: "11 Customer pack", items: [
+      { id: "pack_send_email", tag: "email", label: "Email sending customer pack" },
+      { id: "pack_amend_email", tag: "email", label: "Customer amendment request example" }
+    ]},
+    { group: "12 Physical bank set", items: [
+      { id: "covering_letter_blank", tag: "doc", label: "Blank covering-letter template" },
+      { id: "covering_letter_filled", tag: "doc", label: "Filled covering letter (redacted OK)" }
+    ]},
+    { group: "13–14 Tracking + AR", items: [
+      { id: "vessel_update_email", tag: "email", label: "Forwarder / carrier sailed–ETA update" },
+      { id: "ar_reminder_email", tag: "email", label: "Payment reminder template" },
+      { id: "bank_payment_email", tag: "email", label: "Bank payment-advice email" },
+      { id: "bank_confirm_reply", tag: "email", label: "Your reply confirming invoice / GD / partial" },
+      { id: "remittance_doc", tag: "doc", label: "Customer remittance advice (if a file)" }
+    ]}
+  ];
+
+  var emptyCustomer = function () {
+    return {
+      name: "", email: "", country: "",
+      shipTo: "", consignee: "", consigneeAddress: "", consigneeCountry: "",
+      notifyParty: "", notifyAddress: "", notifyContact: "", pod: "",
+      paymentTerms: "", incoterms: "", freightMarking: "",
+      productSku: "", productDescription: "", quantity: "", unit: "", unitPrice: "", hsCode: "",
+      isfRequired: "", fdaRegistrationNo: "", importerOfRecord: "", consigneeNumber: "", isfSendToEmail: "",
+      forwarder: "", blPath: "", requiredDocPack: "", customerCiDifferent: ""
+    };
+  };
+
+  var state = {
+    version: 1,
+    kind: KIND,
+    workspace: "",
+    company: {},
+    banks: [],
+    contacts: {},
+    partners: {},
+    defaults: {},
+    customers: [emptyCustomer()],
+    products: [{ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" }],
+    documents: {}
+  };
+
+  var saveTimer = null;
+  var statusEl = document.getElementById("saveStatus");
+  var wsInput = document.getElementById("workspaceName");
+
+  function slugify(s) {
+    return String(s || "default").trim().toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || "default";
+  }
+  function storageKey() {
+    return STORAGE_PREFIX + slugify(wsInput && wsInput.value);
+  }
+  function setStatus(msg, ok) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle("ok", !!ok);
+  }
+
+  function getByPath(obj, path) {
+    return path.split(".").reduce(function (o, k) {
+      return o == null ? undefined : o[k];
+    }, obj);
+  }
+  function setByPath(obj, path, val) {
+    var parts = path.split(".");
+    var cur = obj;
+    for (var i = 0; i < parts.length - 1; i++) {
+      if (!cur[parts[i]] || typeof cur[parts[i]] !== "object") cur[parts[i]] = {};
+      cur = cur[parts[i]];
+    }
+    cur[parts[parts.length - 1]] = val;
+  }
+
+  function collectFromDom() {
+    document.querySelectorAll("[data-path]").forEach(function (el) {
+      setByPath(state, el.getAttribute("data-path"), el.value);
+    });
+    state.workspace = (wsInput && wsInput.value) || "";
+    state.kind = KIND;
+    state.version = 1;
+    state.savedAt = new Date().toISOString();
+  }
+
+  function applyPaths() {
+    document.querySelectorAll("[data-path]").forEach(function (el) {
+      var v = getByPath(state, el.getAttribute("data-path"));
+      el.value = v == null ? "" : String(v);
+    });
+  }
+
+  function persist() {
+    try {
+      collectFromDom();
+      localStorage.setItem(storageKey(), JSON.stringify(state));
+      if (wsInput && wsInput.value) localStorage.setItem(LAST_WS_KEY, wsInput.value);
+      setStatus("Saved · " + new Date().toLocaleTimeString(), true);
+    } catch (e) {
+      setStatus("Could not save", false);
+    }
+  }
+  function scheduleSave() {
+    setStatus("Unsaved…", false);
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(persist, 600);
+  }
+
+  function loadDraft() {
+    try {
+      var raw = localStorage.getItem(storageKey());
+      if (!raw) {
+        setStatus("Nothing saved yet", false);
+        renderAll();
+        return;
+      }
+      var data = JSON.parse(raw);
+      state = Object.assign(state, data);
+      if (!state.customers || !state.customers.length) state.customers = [emptyCustomer()];
+      if (!state.products || !state.products.length) {
+        state.products = [{ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" }];
+      }
+      if (!state.banks) state.banks = [];
+      if (!state.documents) state.documents = {};
+      renderAll();
+      setStatus("Restored draft", true);
+    } catch (e) {
+      setStatus("Could not restore", false);
+      renderAll();
+    }
+  }
+
+  /* ---- tabs ---- */
+  document.querySelectorAll(".tabs button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var id = btn.getAttribute("data-tab");
+      document.querySelectorAll(".tabs button").forEach(function (b) {
+        b.setAttribute("aria-selected", b === btn ? "true" : "false");
+      });
+      document.querySelectorAll(".panel").forEach(function (p) {
+        p.classList.toggle("active", p.id === "panel-" + id);
+      });
+    });
+  });
+
+  /* ---- banks ---- */
+  function renderBanks() {
+    var tbody = document.querySelector("#banksTable tbody");
+    tbody.innerHTML = "";
+    if (!state.banks.length) state.banks.push({ name: "", iban: "", contact: "", notes: "" });
+    state.banks.forEach(function (b, i) {
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td><input data-bank="' + i + '" data-k="name" value="" /></td>' +
+        '<td><input data-bank="' + i + '" data-k="iban" value="" /></td>' +
+        '<td><input data-bank="' + i + '" data-k="contact" value="" /></td>' +
+        '<td><input data-bank="' + i + '" data-k="notes" value="" /></td>' +
+        '<td><button type="button" class="rm-bank" data-i="' + i + '">Remove</button></td>';
+      tbody.appendChild(tr);
+      tr.querySelectorAll("input").forEach(function (inp) {
+        inp.value = b[inp.getAttribute("data-k")] || "";
+      });
+    });
+  }
+
+  document.getElementById("addBank").addEventListener("click", function () {
+    collectFromDom();
+    state.banks.push({ name: "", iban: "", contact: "", notes: "" });
+    renderBanks();
+    scheduleSave();
+  });
+  document.querySelector("#banksTable").addEventListener("input", function (e) {
+    var t = e.target;
+    if (!t.getAttribute("data-bank")) return;
+    var i = +t.getAttribute("data-bank");
+    state.banks[i][t.getAttribute("data-k")] = t.value;
+    scheduleSave();
+  });
+  document.querySelector("#banksTable").addEventListener("click", function (e) {
+    if (!e.target.classList.contains("rm-bank")) return;
+    collectFromDom();
+    state.banks.splice(+e.target.getAttribute("data-i"), 1);
+    renderBanks();
+    scheduleSave();
+  });
+
+  /* ---- customers ---- */
+  function packChecks(val) {
+    var set = {};
+    String(val || "").split(/[;,|]/).forEach(function (x) {
+      var t = x.trim().toLowerCase();
+      if (t) set[t] = true;
+    });
+    return set;
+  }
+
+  function renderCustomers() {
+    var root = document.getElementById("customersList");
+    root.innerHTML = "";
+    state.customers.forEach(function (c, i) {
+      var pack = packChecks(c.requiredDocPack);
+      var card = document.createElement("div");
+      card.className = "cust-card";
+      card.innerHTML =
+        '<div class="head"><strong>Customer ' + (i + 1) +
+        (c.name ? " — " + escapeHtml(c.name) : "") +
+        '</strong><button type="button" class="rm" data-rm-cust="' + i + '">Remove</button></div>' +
+        '<div class="grid">' +
+        field("name", "Legal name", c.name, i) +
+        field("email", "Ops / docs email", c.email, i) +
+        field("country", "Country", c.country, i) +
+        field("shipTo", "Ship-to display name", c.shipTo, i) +
+        field("consignee", "Consignee name", c.consignee, i) +
+        fieldFull("consigneeAddress", "Consignee address", c.consigneeAddress, i) +
+        field("consigneeCountry", "Consignee country", c.consigneeCountry, i) +
+        field("notifyParty", "Notify party", c.notifyParty, i) +
+        fieldFull("notifyAddress", "Notify address", c.notifyAddress, i) +
+        field("notifyContact", "Notify contact", c.notifyContact, i) +
+        field("pod", "Usual POD", c.pod, i) +
+        field("paymentTerms", "Payment terms", c.paymentTerms, i) +
+        field("incoterms", "Incoterms", c.incoterms, i) +
+        field("freightMarking", "Freight marking", c.freightMarking, i) +
+        field("productSku", "Default SKU", c.productSku, i) +
+        field("productDescription", "Default description", c.productDescription, i) +
+        field("quantity", "Default qty", c.quantity, i) +
+        field("unit", "Unit", c.unit, i) +
+        field("unitPrice", "Unit price", c.unitPrice, i) +
+        field("hsCode", "HS code", c.hsCode, i) +
+        '<label class="field">ISF required?<select data-cust="' + i + '" data-k="isfRequired">' +
+        '<option value="">—</option><option value="yes">Yes</option><option value="no">No</option></select></label>' +
+        field("fdaRegistrationNo", "FDA registration", c.fdaRegistrationNo, i) +
+        fieldFull("importerOfRecord", "Importer of record (name + EIN)", c.importerOfRecord, i) +
+        field("consigneeNumber", "Consignee number(s)", c.consigneeNumber, i) +
+        field("isfSendToEmail", "ISF send-to email", c.isfSendToEmail, i) +
+        field("forwarder", "Forwarder for this customer", c.forwarder, i) +
+        '<label class="field">B/L path<select data-cust="' + i + '" data-k="blPath">' +
+        '<option value="">—</option><option value="portal">Portal</option><option value="manual">Email / manual</option></select></label>' +
+        '<label class="field full">Documents in customer pack (comma-separated)<span class="why">e.g. bill_of_lading, customer_invoice, packing_list, e_coo, container_photo, treatment_certificate</span>' +
+        '<input data-cust="' + i + '" data-k="requiredDocPack" value="" placeholder="bill_of_lading, customer_invoice, packing_list, e_coo" /></label>' +
+        '<label class="field">Customer CI different from bank CI?<select data-cust="' + i + '" data-k="customerCiDifferent">' +
+        '<option value="">—</option><option value="same">Same</option><option value="different">Different — will attach sample</option></select></label>' +
+        "</div>";
+      root.appendChild(card);
+      card.querySelectorAll("[data-cust]").forEach(function (el) {
+        var k = el.getAttribute("data-k");
+        if (el.tagName === "SELECT") el.value = c[k] || "";
+        else el.value = c[k] || "";
+      });
+    });
+  }
+
+  function field(k, label, val, i) {
+    return '<label class="field">' + escapeHtml(label) +
+      '<input data-cust="' + i + '" data-k="' + k + '" /></label>';
+  }
+  function fieldFull(k, label, val, i) {
+    return '<label class="field full">' + escapeHtml(label) +
+      '<input data-cust="' + i + '" data-k="' + k + '" /></label>';
+  }
+  function escapeHtml(s) {
+    return String(s || "").replace(/[&<>"']/g, function (ch) {
+      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch];
+    });
+  }
+
+  document.getElementById("addCustomer").addEventListener("click", function () {
+    collectFromDom();
+    state.customers.push(emptyCustomer());
+    renderCustomers();
+    scheduleSave();
+  });
+  document.getElementById("customersList").addEventListener("input", function (e) {
+    var t = e.target;
+    if (!t.getAttribute("data-cust")) return;
+    state.customers[+t.getAttribute("data-cust")][t.getAttribute("data-k")] = t.value;
+    scheduleSave();
+  });
+  document.getElementById("customersList").addEventListener("change", function (e) {
+    var t = e.target;
+    if (!t.getAttribute("data-cust")) return;
+    state.customers[+t.getAttribute("data-cust")][t.getAttribute("data-k")] = t.value;
+    scheduleSave();
+  });
+  document.getElementById("customersList").addEventListener("click", function (e) {
+    if (!e.target.hasAttribute("data-rm-cust")) return;
+    collectFromDom();
+    state.customers.splice(+e.target.getAttribute("data-rm-cust"), 1);
+    if (!state.customers.length) state.customers = [emptyCustomer()];
+    renderCustomers();
+    scheduleSave();
+  });
+
+  /* ---- products ---- */
+  function renderProducts() {
+    var tbody = document.querySelector("#productsTable tbody");
+    tbody.innerHTML = "";
+    state.products.forEach(function (p, i) {
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td><input data-prod="' + i + '" data-k="sku" /></td>' +
+        '<td><input data-prod="' + i + '" data-k="description" /></td>' +
+        '<td><input data-prod="' + i + '" data-k="unit" /></td>' +
+        '<td><input data-prod="' + i + '" data-k="typicalQty" /></td>' +
+        '<td><input data-prod="' + i + '" data-k="unitPrice" /></td>' +
+        '<td><input data-prod="' + i + '" data-k="hsCode" /></td>' +
+        '<td><button type="button" data-rm-prod="' + i + '">Remove</button></td>';
+      tbody.appendChild(tr);
+      tr.querySelectorAll("input").forEach(function (inp) {
+        inp.value = p[inp.getAttribute("data-k")] || "";
+      });
+    });
+  }
+  document.getElementById("addProduct").addEventListener("click", function () {
+    collectFromDom();
+    state.products.push({ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" });
+    renderProducts();
+    scheduleSave();
+  });
+  document.querySelector("#productsTable").addEventListener("input", function (e) {
+    var t = e.target;
+    if (!t.getAttribute("data-prod")) return;
+    state.products[+t.getAttribute("data-prod")][t.getAttribute("data-k")] = t.value;
+    scheduleSave();
+  });
+  document.querySelector("#productsTable").addEventListener("click", function (e) {
+    if (!e.target.hasAttribute("data-rm-prod")) return;
+    collectFromDom();
+    state.products.splice(+e.target.getAttribute("data-rm-prod"), 1);
+    if (!state.products.length) {
+      state.products = [{ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" }];
+    }
+    renderProducts();
+    scheduleSave();
+  });
+
+  /* ---- documents ---- */
+  function renderDocs() {
+    var root = document.getElementById("docsList");
+    root.innerHTML = "";
+    DOC_ITEMS.forEach(function (g) {
+      var h = document.createElement("h3");
+      h.textContent = g.group;
+      root.appendChild(h);
+      var ul = document.createElement("ul");
+      ul.className = "checks";
+      g.items.forEach(function (it) {
+        var li = document.createElement("li");
+        var tagClass = it.tag === "email" ? "tag-email" : it.tag === "note" ? "tag-note" : "tag-doc";
+        var tagLabel = it.tag === "email" ? "Email" : it.tag === "note" ? "Note" : "Document";
+        li.innerHTML =
+          '<label><input type="checkbox" data-doc="' + it.id + '" />' +
+          '<span><span class="tag ' + tagClass + '">' + tagLabel + "</span>" +
+          escapeHtml(it.label) + "</span></label>";
+        ul.appendChild(li);
+        li.querySelector("input").checked = !!state.documents[it.id];
+      });
+      root.appendChild(ul);
+    });
+  }
+  document.getElementById("docsList").addEventListener("change", function (e) {
+    var t = e.target;
+    if (!t.getAttribute("data-doc")) return;
+    state.documents[t.getAttribute("data-doc")] = !!t.checked;
+    scheduleSave();
+  });
+
+  function renderAll() {
+    if (wsInput) wsInput.value = state.workspace || wsInput.value || "";
+    applyPaths();
+    renderBanks();
+    renderCustomers();
+    renderProducts();
+    renderDocs();
+  }
+
+  /* ---- CSV ---- */
+  function csvEscape(v) {
+    var s = String(v == null ? "" : v);
+    if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+  function toCsv(headers, rows) {
+    var lines = [headers.join(",")];
+    rows.forEach(function (row) {
+      lines.push(headers.map(function (h) { return csvEscape(row[h]); }).join(","));
+    });
+    return lines.join("\n") + "\n";
+  }
+  function parseCsv(text) {
+    var rows = [];
+    var i = 0, field = "", row = [], inQ = false;
+    text = text.replace(/^\uFEFF/, "");
+    while (i < text.length) {
+      var ch = text[i];
+      if (inQ) {
+        if (ch === '"') {
+          if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+          inQ = false; i++; continue;
+        }
+        field += ch; i++; continue;
+      }
+      if (ch === '"') { inQ = true; i++; continue; }
+      if (ch === ",") { row.push(field); field = ""; i++; continue; }
+      if (ch === "\n" || ch === "\r") {
+        if (ch === "\r" && text[i + 1] === "\n") i++;
+        row.push(field); field = "";
+        if (row.some(function (x) { return String(x).trim(); })) rows.push(row);
+        row = []; i++; continue;
+      }
+      field += ch; i++;
+    }
+    row.push(field);
+    if (row.some(function (x) { return String(x).trim(); })) rows.push(row);
+    if (!rows.length) return [];
+    var headers = rows[0].map(function (h) { return String(h).trim(); });
+    return rows.slice(1).map(function (r) {
+      var o = {};
+      headers.forEach(function (h, idx) { o[h] = r[idx] != null ? String(r[idx]).trim() : ""; });
+      return o;
+    });
+  }
+  function downloadText(filename, text, mime) {
+    var blob = new Blob([text], { type: mime || "text/plain;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+
+  document.getElementById("dlCustCsv").addEventListener("click", function () {
+    var sample = [emptyCustomer()];
+    sample[0].name = "Example Buyer Inc";
+    sample[0].country = "United States";
+    sample[0].isfRequired = "yes";
+    sample[0].blPath = "manual";
+    sample[0].requiredDocPack = "bill_of_lading, customer_invoice, packing_list, e_coo";
+    downloadText("agro-hub-customers-template.csv", toCsv(CUST_CSV_HEADERS, sample), "text/csv;charset=utf-8");
+  });
+  document.getElementById("dlProdCsv").addEventListener("click", function () {
+    downloadText(
+      "agro-hub-products-template.csv",
+      toCsv(PROD_CSV_HEADERS, [{ sku: "AH-SALT-FINE", description: "Himalayan Pink Salt — Fine", unit: "KG", typicalQty: "20000", unitPrice: "2.4", hsCode: "2501.0090" }]),
+      "text/csv;charset=utf-8"
+    );
+  });
+  document.getElementById("importCustCsv").addEventListener("change", function (e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var rows = parseCsv(String(reader.result || ""));
+        if (!rows.length) { alert("No data rows found in CSV."); return; }
+        collectFromDom();
+        state.customers = rows.map(function (r) {
+          var c = emptyCustomer();
+          CUST_CSV_HEADERS.forEach(function (h) { if (r[h] != null) c[h] = r[h]; });
+          return c;
+        });
+        renderCustomers();
+        scheduleSave();
+        setStatus("Imported " + rows.length + " customers", true);
+      } catch (err) {
+        alert("Could not parse CSV: " + err.message);
+      }
+      e.target.value = "";
+    };
+    reader.readAsText(file);
+  });
+  document.getElementById("importProdCsv").addEventListener("change", function (e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var rows = parseCsv(String(reader.result || ""));
+        if (!rows.length) { alert("No data rows found in CSV."); return; }
+        collectFromDom();
+        state.products = rows.map(function (r) {
+          var p = { sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" };
+          PROD_CSV_HEADERS.forEach(function (h) { if (r[h] != null) p[h] = r[h]; });
+          return p;
+        });
+        renderProducts();
+        scheduleSave();
+        setStatus("Imported " + rows.length + " products", true);
+      } catch (err) {
+        alert("Could not parse CSV: " + err.message);
+      }
+      e.target.value = "";
+    };
+    reader.readAsText(file);
+  });
+
+  /* ---- JSON / clear / print ---- */
+  document.getElementById("btnJson").addEventListener("click", function () {
+    collectFromDom();
+    var name = "agro-hub-data-" + slugify(state.company.legalName || state.workspace || "draft") +
+      "-" + new Date().toISOString().slice(0, 10) + ".json";
+    downloadText(name, JSON.stringify(state, null, 2), "application/json");
+    persist();
+  });
+  document.getElementById("btnPrint").addEventListener("click", function () { window.print(); });
+  document.getElementById("btnClear").addEventListener("click", function () {
+    if (!confirm("Clear this draft from this browser?")) return;
+    localStorage.removeItem(storageKey());
+    state = {
+      version: 1, kind: KIND, workspace: wsInput.value || "",
+      company: {}, banks: [], contacts: {}, partners: {}, defaults: {},
+      customers: [emptyCustomer()],
+      products: [{ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" }],
+      documents: {}
+    };
+    renderAll();
+    setStatus("Draft cleared", false);
+  });
+
+  document.body.addEventListener("input", function (e) {
+    if (e.target.closest("[data-path]") || e.target === wsInput) scheduleSave();
+  });
+  document.body.addEventListener("change", function (e) {
+    if (e.target.closest("[data-path]") || e.target === wsInput) scheduleSave();
+  });
+  wsInput.addEventListener("change", function () { loadDraft(); });
+
+  try {
+    var last = localStorage.getItem(LAST_WS_KEY);
+    if (last) wsInput.value = last;
+  } catch (e) {}
+  loadDraft();
+})();
+</script>
+</body>
+</html>
