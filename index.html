@@ -413,7 +413,12 @@
     <!-- PRODUCTS -->
     <section class="panel" id="panel-products" role="tabpanel">
       <h2>3. Product / SKU catalog</h2>
-      <p class="hint">Products you ship — descriptions and HS codes as on documents.</p>
+      <p class="hint">
+        Pick a commodity from the list — <strong>HS code</strong> fills in automatically
+        (standard codes for salt, rice, spices, etc.). You can still override HS if needed.
+        Rows you add here also drive the customer “default product” picker.
+      </p>
+      <datalist id="lov-commodity"></datalist>
 
       <div class="csv-box">
         <strong>CSV option</strong>
@@ -589,6 +594,114 @@
     { id: "isf_confirmation", label: "ISF filing confirmation" }
   ];
 
+  /** Standard Agro Hub commodities → HS (as used on CI / packing / ISF). */
+  var COMMODITY_CATALOG = [
+    { sku: "AH-SALT-FINE", description: "Himalayan Pink Salt — Fine", hsCode: "2501.0090", unit: "KG", typicalQty: "20000", unitPrice: "2.4" },
+    { sku: "AH-SALT-COARSE", description: "Himalayan Pink Salt — Coarse", hsCode: "2501.0090", unit: "KG", typicalQty: "18000", unitPrice: "2.15" },
+    { sku: "AH-SALT-PRODUCTS", description: "HIMALAYAN SALT PRODUCTS.", hsCode: "2501.0090", unit: "KG", typicalQty: "20000", unitPrice: "2.4" },
+    { sku: "AH-RICE-25", description: "Basmati rice, 25 kg bags", hsCode: "1006.30", unit: "bag", typicalQty: "800", unitPrice: "42.5" },
+    { sku: "AH-RICE-LG-50", description: "Long grain rice, 50 kg bags", hsCode: "1006.30", unit: "bag", typicalQty: "600", unitPrice: "38.0" },
+    { sku: "AH-RICE-BRK", description: "Broken rice, 25 kg bags", hsCode: "1006.40", unit: "bag", typicalQty: "1000", unitPrice: "28.5" },
+    { sku: "AH-SPICE-CUMIN", description: "Cumin seed whole, 25 kg bags", hsCode: "0909.31", unit: "bag", typicalQty: "500", unitPrice: "55.0" },
+    { sku: "AH-SPICE-CORIANDER", description: "Coriander seed, 25 kg bags", hsCode: "0909.21", unit: "bag", typicalQty: "500", unitPrice: "" },
+    { sku: "AH-SPICE-TURMERIC", description: "Turmeric powder, 25 kg bags", hsCode: "0910.30", unit: "bag", typicalQty: "500", unitPrice: "" },
+    { sku: "AH-SPICE-CHILI", description: "Red chili whole / crushed, 25 kg bags", hsCode: "0904.21", unit: "bag", typicalQty: "500", unitPrice: "" },
+    { sku: "AH-PALLET-WOOD", description: "Wooden pallet", hsCode: "4415.20", unit: "PCS", typicalQty: "1", unitPrice: "" },
+    { sku: "AH-PALLET-NONWOOD", description: "Non-wood pallet", hsCode: "3923.90", unit: "PCS", typicalQty: "1", unitPrice: "" }
+  ];
+
+  var HS_BY_KEYWORD = [
+    { re: /broken\s*rice|1006\.40/i, hsCode: "1006.40" },
+    { re: /basmati|long\s*grain|rice|1006\.30/i, hsCode: "1006.30" },
+    { re: /salt|2501/i, hsCode: "2501.0090" },
+    { re: /cumin|0909\.31/i, hsCode: "0909.31" },
+    { re: /coriander|0909\.21/i, hsCode: "0909.21" },
+    { re: /turmeric|0910\.30/i, hsCode: "0910.30" },
+    { re: /chili|chilli|pepper|0904/i, hsCode: "0904.21" },
+    { re: /wood(en)?\s*pallet|4415/i, hsCode: "4415.20" },
+    { re: /non[- ]?wood\s*pallet|plastic\s*pallet/i, hsCode: "3923.90" }
+  ];
+
+  function lookupCommodity(skuOrDesc) {
+    var q = String(skuOrDesc || "").trim();
+    if (!q) return null;
+    var qLower = q.toLowerCase();
+    var fromState = (state.products || []).map(function (p) {
+      return {
+        sku: p.sku || "",
+        description: p.description || "",
+        hsCode: p.hsCode || "",
+        unit: p.unit || "",
+        typicalQty: p.typicalQty || "",
+        unitPrice: p.unitPrice || ""
+      };
+    });
+    var all = COMMODITY_CATALOG.concat(fromState);
+    var exact = all.find(function (c) {
+      return c.sku.toLowerCase() === qLower || c.description.toLowerCase() === qLower;
+    });
+    if (exact && exact.hsCode) return exact;
+    for (var i = 0; i < HS_BY_KEYWORD.length; i++) {
+      if (HS_BY_KEYWORD[i].re.test(q)) {
+        return {
+          sku: "",
+          description: q,
+          hsCode: HS_BY_KEYWORD[i].hsCode,
+          unit: "",
+          typicalQty: "",
+          unitPrice: ""
+        };
+      }
+    }
+    return exact || null;
+  }
+
+  function applyCommodityToProduct(p, hit, onlyEmpty) {
+    if (!hit) return;
+    if (!onlyEmpty || !p.sku) p.sku = hit.sku || p.sku;
+    if (!onlyEmpty || !p.description) p.description = hit.description || p.description;
+    if (!onlyEmpty || !p.hsCode) p.hsCode = hit.hsCode || p.hsCode;
+    if ((!onlyEmpty || !p.unit) && hit.unit) p.unit = hit.unit;
+    if ((!onlyEmpty || !p.typicalQty) && hit.typicalQty) p.typicalQty = hit.typicalQty;
+    if ((!onlyEmpty || !p.unitPrice) && hit.unitPrice) p.unitPrice = hit.unitPrice;
+  }
+
+  function applyCommodityToCustomer(c, hit) {
+    if (!hit) return;
+    if (hit.sku) c.productSku = hit.sku;
+    if (hit.description) c.productDescription = hit.description;
+    if (hit.hsCode) c.hsCode = hit.hsCode;
+    if (hit.unit) c.unit = hit.unit;
+    if (hit.typicalQty && !c.quantity) c.quantity = hit.typicalQty;
+    if (hit.unitPrice && !c.unitPrice) c.unitPrice = hit.unitPrice;
+  }
+
+  function refreshCommodityDatalist() {
+    var dl = document.getElementById("lov-commodity");
+    if (!dl) return;
+    var seen = {};
+    var opts = [];
+    function add(c) {
+      if (!c || !c.description) return;
+      var key = c.description.toLowerCase();
+      if (seen[key]) return;
+      seen[key] = true;
+      opts.push(
+        '<option value="' + escapeHtml(c.description) + '" label="' +
+        escapeHtml((c.sku ? c.sku + " · " : "") + c.hsCode) + '"></option>'
+      );
+      if (c.sku) {
+        opts.push(
+          '<option value="' + escapeHtml(c.sku) + '" label="' +
+          escapeHtml(c.description + " · " + c.hsCode) + '"></option>'
+        );
+      }
+    }
+    COMMODITY_CATALOG.forEach(add);
+    (state.products || []).forEach(add);
+    dl.innerHTML = opts.join("");
+  }
+
   function fillLovSelects() {
     Object.keys(LOV).forEach(function (key) {
       var dl = document.getElementById("lov-" + key);
@@ -600,6 +713,7 @@
         })
         .join("");
     });
+    refreshCommodityDatalist();
     document.querySelectorAll("select[data-lov]").forEach(function (sel) {
       var key = sel.getAttribute("data-lov");
       var list = LOV[key];
@@ -1199,12 +1313,17 @@
         fieldList("paymentTerms", "Payment terms", "lov-payment", i) +
         fieldList("incoterms", "Incoterms", "lov-incoterms", i) +
         fieldList("freightMarking", "Freight marking", "lov-freight", i) +
-        field("productSku", "Default SKU", i) +
-        field("productDescription", "Default description", i) +
+        '<label class="field">Default SKU / commodity' +
+        '<input data-cust="' + i + '" data-k="productSku" list="lov-commodity" placeholder="Pick commodity — HS fills in" />' +
+        '<span class="why">Pick from catalog; HS auto-fills</span></label>' +
+        '<label class="field">Default description' +
+        '<input data-cust="' + i + '" data-k="productDescription" list="lov-commodity" placeholder="Pick or type commodity" />' +
+        '</label>' +
         field("quantity", "Default qty", i) +
         fieldList("unit", "Unit", "lov-unit", i) +
         field("unitPrice", "Unit price", i) +
-        field("hsCode", "HS code", i) +
+        '<label class="field">HS code<span class="why">From commodity (editable)</span>' +
+        '<input data-cust="' + i + '" data-k="hsCode" class="mono" placeholder="Auto from commodity" /></label>' +
         '<label class="field">ISF required?<select data-cust="' + i + '" data-k="isfRequired">' +
         '<option value="">—</option><option value="yes">Yes</option><option value="no">No</option></select></label>' +
         field("fdaRegistrationNo", "FDA registration", i) +
@@ -1255,6 +1374,24 @@
     renderCustomers();
     scheduleSave();
   });
+  function maybeFillCustomerCommodity(i, k, value) {
+    if (k !== "productSku" && k !== "productDescription") return false;
+    var hit = lookupCommodity(value);
+    if (!hit || !hit.hsCode) {
+      state.customers[i][k] = value;
+      return false;
+    }
+    applyCommodityToCustomer(state.customers[i], hit);
+    if (k === "productSku" && !hit.sku) state.customers[i].productSku = value;
+    if (k === "productDescription" && value && hit.description !== value) {
+      // keep typed description if keyword match only
+      if (!hit.sku) state.customers[i].productDescription = value;
+    }
+    renderCustomers();
+    scheduleSave();
+    return true;
+  }
+
   document.getElementById("customersList").addEventListener("input", function (e) {
     var t = e.target;
     if (t.hasAttribute("data-cust-pack")) {
@@ -1264,11 +1401,16 @@
       return;
     }
     if (!t.getAttribute("data-cust")) return;
-    state.customers[+t.getAttribute("data-cust")][t.getAttribute("data-k")] = t.value;
+    var ci = +t.getAttribute("data-cust");
+    var ck = t.getAttribute("data-k");
+    state.customers[ci][ck] = t.value;
     scheduleSave();
   });
   document.getElementById("customersList").addEventListener("change", function (e) {
     var t = e.target;
+    if (t.getAttribute("data-cust") && (t.getAttribute("data-k") === "productSku" || t.getAttribute("data-k") === "productDescription")) {
+      if (maybeFillCustomerCommodity(+t.getAttribute("data-cust"), t.getAttribute("data-k"), t.value)) return;
+    }
     if (t.getAttribute("data-cust-action") === "copyConsignee") {
       var i = +t.getAttribute("data-cust-i");
       if (t.checked) {
@@ -1312,17 +1454,18 @@
 
   /* ---- products ---- */
   function renderProducts() {
+    refreshCommodityDatalist();
     var tbody = document.querySelector("#productsTable tbody");
     tbody.innerHTML = "";
     state.products.forEach(function (p, i) {
       var tr = document.createElement("tr");
       tr.innerHTML =
-        '<td><input data-prod="' + i + '" data-k="sku" /></td>' +
-        '<td><input data-prod="' + i + '" data-k="description" /></td>' +
+        '<td><input data-prod="' + i + '" data-k="sku" list="lov-commodity" placeholder="SKU / commodity" /></td>' +
+        '<td><input data-prod="' + i + '" data-k="description" list="lov-commodity" placeholder="Pick commodity" /></td>' +
         '<td><input data-prod="' + i + '" data-k="unit" list="lov-unit" placeholder="Pick or type" /></td>' +
         '<td><input data-prod="' + i + '" data-k="typicalQty" /></td>' +
         '<td><input data-prod="' + i + '" data-k="unitPrice" /></td>' +
-        '<td><input data-prod="' + i + '" data-k="hsCode" /></td>' +
+        '<td><input data-prod="' + i + '" data-k="hsCode" class="mono" placeholder="Auto" title="Filled from commodity; editable" /></td>' +
         '<td><button type="button" data-rm-prod="' + i + '">Remove</button></td>';
       tbody.appendChild(tr);
       tr.querySelectorAll("input").forEach(function (inp) {
@@ -1330,6 +1473,24 @@
       });
     });
   }
+
+  function fillProductFromCommodity(i, fromKey, value) {
+    var p = state.products[i];
+    p[fromKey] = value;
+    var hit = lookupCommodity(value);
+    if (!hit || !hit.hsCode) {
+      // still try keyword on description after typing
+      return false;
+    }
+    applyCommodityToProduct(p, hit, false);
+    if (fromKey === "description" && !hit.sku) p.description = value;
+    if (fromKey === "sku" && value && !hit.sku) p.sku = value;
+    renderProducts();
+    refreshCommodityDatalist();
+    scheduleSave();
+    return true;
+  }
+
   document.getElementById("addProduct").addEventListener("click", function () {
     collectFromDom();
     state.products.push({ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" });
@@ -1339,13 +1500,40 @@
   document.querySelector("#productsTable").addEventListener("input", function (e) {
     var t = e.target;
     if (!t.getAttribute("data-prod")) return;
-    state.products[+t.getAttribute("data-prod")][t.getAttribute("data-k")] = t.value;
+    var i = +t.getAttribute("data-prod");
+    var k = t.getAttribute("data-k");
+    state.products[i][k] = t.value;
+    // Live HS fill while picking from datalist
+    if ((k === "sku" || k === "description") && lookupCommodity(t.value)) {
+      var hit = lookupCommodity(t.value);
+      if (hit && hit.hsCode && hit.hsCode !== state.products[i].hsCode) {
+        applyCommodityToProduct(state.products[i], hit, false);
+        var hsInp = t.closest("tr").querySelector('[data-k="hsCode"]');
+        var skuInp = t.closest("tr").querySelector('[data-k="sku"]');
+        var descInp = t.closest("tr").querySelector('[data-k="description"]');
+        var unitInp = t.closest("tr").querySelector('[data-k="unit"]');
+        var qtyInp = t.closest("tr").querySelector('[data-k="typicalQty"]');
+        var priceInp = t.closest("tr").querySelector('[data-k="unitPrice"]');
+        if (hsInp) hsInp.value = state.products[i].hsCode || "";
+        if (skuInp && state.products[i].sku) skuInp.value = state.products[i].sku;
+        if (descInp && state.products[i].description) descInp.value = state.products[i].description;
+        if (unitInp && state.products[i].unit) unitInp.value = state.products[i].unit;
+        if (qtyInp && state.products[i].typicalQty) qtyInp.value = state.products[i].typicalQty;
+        if (priceInp && state.products[i].unitPrice) priceInp.value = state.products[i].unitPrice;
+      }
+    }
     scheduleSave();
   });
   document.querySelector("#productsTable").addEventListener("change", function (e) {
     var t = e.target;
     if (!t.getAttribute("data-prod")) return;
-    state.products[+t.getAttribute("data-prod")][t.getAttribute("data-k")] = t.value;
+    var i = +t.getAttribute("data-prod");
+    var k = t.getAttribute("data-k");
+    if (k === "sku" || k === "description") {
+      if (fillProductFromCommodity(i, k, t.value)) return;
+    }
+    state.products[i][k] = t.value;
+    refreshCommodityDatalist();
     scheduleSave();
   });
 
@@ -1396,6 +1584,7 @@
   function renderAll() {
     if (wsInput) wsInput.value = state.workspace || wsInput.value || "";
     applyPaths();
+    refreshCommodityDatalist();
     renderIsfParties();
     renderBanks();
     renderCustomers();
