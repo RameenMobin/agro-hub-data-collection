@@ -177,6 +177,35 @@
     @media (max-width: 720px) {
       .check-grid { grid-template-columns: 1fr; }
     }
+    .source-step {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px 14px 12px;
+      margin: 0 0 14px;
+      background: #fafcfe;
+    }
+    .source-step .step-head {
+      display: flex; flex-wrap: wrap; gap: 8px 12px;
+      align-items: baseline; margin-bottom: 6px;
+    }
+    .source-step .step-no {
+      font: 500 12px "IBM Plex Mono", monospace;
+      color: var(--cyan);
+    }
+    .source-step .step-title {
+      font: 600 15px "Inter Tight", sans-serif;
+      color: var(--ink);
+    }
+    .source-step .fills {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .source-step .fills strong { color: var(--body); font-weight: 600; }
+    .source-step .ask-label {
+      font-size: 12px; font-weight: 600; color: var(--ink);
+      margin: 0 0 6px;
+    }
     .tag {
       display: inline-block; font: 500 9.5px/1 "IBM Plex Mono", monospace;
       padding: 3px 6px; border-radius: 3px; margin-right: 6px; white-space: nowrap;
@@ -229,22 +258,23 @@
       <p class="kicker">Data collection portal</p>
       <h1>Tell us how your export desk works</h1>
       <p>
-        Fill company details, every export customer, products, and tick which
-        documents / email templates you can share. Progress saves in this browser.
-        When done, download the JSON and email it to TraceRoot (attach sample files separately).
+        Most important: for each form TraceRoot will fill, tell us
+        <strong>which document or email you use today</strong> as the source
+        (tab <strong>2. Form sources</strong>). Then add company, customers, and products.
+        Progress saves in this browser — download JSON when done.
       </p>
       <div class="promise">
-        Prefer Excel? Use <strong>CSV templates</strong> on the Customers and Products tabs,
-        fill them offline, then Import CSV. No passwords or PSW logins needed here.
+        Prefer Excel for customers/products? Use <strong>CSV templates</strong> on those tabs,
+        then Import CSV. Attach sample PDFs / emails when you send the JSON to TraceRoot.
       </div>
     </div>
 
     <nav class="tabs" role="tablist" aria-label="Sections">
       <button type="button" role="tab" aria-selected="true" data-tab="company">1. Company</button>
-      <button type="button" role="tab" aria-selected="false" data-tab="customers">2. Customers</button>
-      <button type="button" role="tab" aria-selected="false" data-tab="products">3. Products</button>
-      <button type="button" role="tab" aria-selected="false" data-tab="partners">4. Partners</button>
-      <button type="button" role="tab" aria-selected="false" data-tab="docs">5. Documents</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="docs">2. Form sources</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="customers">3. Customers</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="products">4. Products</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="partners">5. Partners</button>
     </nav>
 
     <!-- COMPANY -->
@@ -391,7 +421,7 @@
 
     <!-- CUSTOMERS -->
     <section class="panel" id="panel-customers" role="tabpanel">
-      <h2>2. Customers</h2>
+      <h2>3. Customers</h2>
       <p class="hint">One card per export buyer. Add as many as you need.</p>
 
       <div class="csv-box">
@@ -412,7 +442,7 @@
 
     <!-- PRODUCTS -->
     <section class="panel" id="panel-products" role="tabpanel">
-      <h2>3. Product / SKU catalog</h2>
+      <h2>4. Product / SKU catalog</h2>
       <p class="hint">
         Pick a commodity from the list — <strong>HS code</strong> fills in automatically
         (standard codes for salt, rice, spices, etc.). You can still override HS if needed.
@@ -451,7 +481,7 @@
 
     <!-- PARTNERS -->
     <section class="panel" id="panel-partners" role="tabpanel">
-      <h2>4. External partners</h2>
+      <h2>5. External partners</h2>
       <p class="hint">Forwarders, clearing agent, fumigator, ISF agent.</p>
       <div class="grid">
         <label class="field">Primary forwarder — name
@@ -495,21 +525,23 @@
       </div>
     </section>
 
-    <!-- DOCS -->
+    <!-- FORM SOURCES (was buried as samples-only; this is the core ask) -->
     <section class="panel" id="panel-docs" role="tabpanel">
-      <h2>5. Source documents &amp; email templates</h2>
+      <h2>2. Form sources by shipment step</h2>
       <p class="hint">
-        Tick what you can send. Attach files when you email the JSON to TraceRoot.
+        For each step below: what TraceRoot will auto-fill, and
+        <strong>which document or email your team looks at today</strong> to fill that data.
+        Tick every source you use. Optionally mark that you can send a sample file.
       </p>
       <div class="legend">
-        <span><span class="tag tag-doc">Document</span> PDF / Word / Excel / scan</span>
-        <span><span class="tag tag-email">Email</span> Subject + body example or template</span>
-        <span><span class="tag tag-note">Note</span> Short written answer</span>
+        <span><span class="tag tag-doc">Document</span> PDF / Word / Excel / scan / portal print</span>
+        <span><span class="tag tag-email">Email / chat</span> Email, WhatsApp, or message thread</span>
+        <span><span class="tag tag-note">System</span> Typed in SAP / PSW / portal (no file)</span>
       </div>
       <div id="docsList"></div>
-      <h3>Extra notes</h3>
-      <label class="field full">Anything else we should know
-        <textarea data-path="documents.extraNotes" rows="4"></textarea>
+      <h3>Anything else</h3>
+      <label class="field full">Other sources or exceptions we should know
+        <textarea data-path="documents.extraNotes" rows="4" placeholder="e.g. True Spice always sends a customer-specific CI layout…"></textarea>
       </label>
     </section>
 
@@ -785,82 +817,188 @@
     "sku", "description", "unit", "typicalQty", "unitPrice", "hsCode"
   ];
 
-  var DOC_ITEMS = [
-    { group: "00–01 Proforma invoice", items: [
-      { id: "pi_filled_pdf", tag: "doc", label: "Filled proforma invoice PDF (1–2 examples)" },
-      { id: "pi_blank_template", tag: "doc", label: "Blank PI template (Word / Excel / PDF)" },
-      { id: "pi_sales_email", tag: "email", label: "Sales → Export email attaching the PI" },
-      { id: "pi_amend_email", tag: "email", label: "PI amendment / price-change email from Sales" }
-    ]},
-    { group: "02 CRO + loading date", items: [
-      { id: "cro_pdf", tag: "doc", label: "Filled CRO / booking confirmation PDF" },
-      { id: "loading_date_email", tag: "email", label: "How estimated loading date is communicated" }
-    ]},
-    { group: "03 Commercial invoice / SAP", items: [
-      { id: "ci_filled_pdf", tag: "doc", label: "Filled commercial invoice PDF" },
-      { id: "ci_blank_template", tag: "doc", label: "Blank CI template" },
-      { id: "ci_sap_note", tag: "note", label: "Note: how CI is posted in SAP (typed fields)" }
-    ]},
-    { group: "04 Container + gate pass", items: [
-      { id: "gate_pass_filled", tag: "doc", label: "Outward gate pass photo / scan (filled)" },
-      { id: "gate_pass_blank", tag: "doc", label: "Blank gate-pass form" },
-      { id: "container_msg", tag: "email", label: "How container number arrives (email / WhatsApp)" }
-    ]},
-    { group: "05 Customs invoice + FIA", items: [
-      { id: "customs_inv_filled", tag: "doc", label: "Filled customs invoice (PDF / Excel)" },
-      { id: "customs_inv_blank", tag: "doc", label: "Blank customs invoice template" },
-      { id: "fi_request_filled", tag: "doc", label: "Filled HBL FI request Excel" },
-      { id: "fi_request_blank", tag: "doc", label: "Blank FI request template" },
-      { id: "fi_psw_pdf", tag: "doc", label: "PSW / bank FI PDF after issue" },
-      { id: "fi_bank_amend_email", tag: "email", label: "Bank “correct and resend” email" },
-      { id: "fi_send_email", tag: "email", label: "Outbound email when sending FI form to bank" }
-    ]},
-    { group: "06 Clearing agent + GD", items: [
-      { id: "clearing_pack_email", tag: "email", label: "Email to clearing agent (body + attachment list)" },
-      { id: "gd_pdf", tag: "doc", label: "Filled GD PDF from PSW" }
-    ]},
-    { group: "07 Fumigation (wood only)", items: [
-      { id: "affidavit_blank", tag: "doc", label: "Blank affidavit template" },
-      { id: "tc_sample", tag: "doc", label: "Treatment / fumigation certificate sample" },
-      { id: "phyto_sample", tag: "doc", label: "Phytosanitary certificate sample" },
-      { id: "fumigator_email", tag: "email", label: "Email to fumigator requesting treatment" },
-      { id: "psw_treatment_note", tag: "note", label: "Note / screenshot of PSW treatment fields" }
-    ]},
-    { group: "08 Draft BL + OBL", items: [
-      { id: "bl_format_template", tag: "doc", label: "BL FORMAT draft template (Word)" },
-      { id: "bl_checking_email", tag: "email", label: "Checking-copy email from forwarder / line" },
-      { id: "bl_approve_email", tag: "email", label: "Your Approved / correction reply" },
-      { id: "obl_scan", tag: "doc", label: "Filled HBL / OBL scan" },
-      { id: "bl_path_note", tag: "note", label: "Note: forwarder → portal or email path" }
-    ]},
-    { group: "09 Packing list + e-COO", items: [
-      { id: "packing_list_filled", tag: "doc", label: "Filled packing list PDF" },
-      { id: "packing_list_blank", tag: "doc", label: "Blank packing-list template" },
-      { id: "ecoo_sample", tag: "doc", label: "Sample e-COO PDF from PSW" },
-      { id: "vgm_form", tag: "doc", label: "VGM form (if used separately)" }
-    ]},
-    { group: "10 ISF (US)", items: [
-      { id: "isf_sheet_filled", tag: "doc", label: "Filled Flexport ISF sheet (Excel)" },
-      { id: "isf_sheet_blank", tag: "doc", label: "Blank ISF template" },
-      { id: "isf_send_email", tag: "email", label: "Email sending ISF to customer / agent" },
-      { id: "isf_confirm_email", tag: "email", label: "Filing-confirmation email" }
-    ]},
-    { group: "11 Customer pack", items: [
-      { id: "pack_send_email", tag: "email", label: "Email sending customer pack" },
-      { id: "pack_amend_email", tag: "email", label: "Customer amendment request example" }
-    ]},
-    { group: "12 Physical bank set", items: [
-      { id: "covering_letter_blank", tag: "doc", label: "Blank covering-letter template" },
-      { id: "covering_letter_filled", tag: "doc", label: "Filled covering letter (redacted OK)" }
-    ]},
-    { group: "13–14 Tracking + AR", items: [
-      { id: "vessel_update_email", tag: "email", label: "Forwarder / carrier sailed–ETA update" },
-      { id: "ar_reminder_email", tag: "email", label: "Payment reminder template" },
-      { id: "bank_payment_email", tag: "email", label: "Bank payment-advice email" },
-      { id: "bank_confirm_reply", tag: "email", label: "Your reply confirming invoice / GD / partial" },
-      { id: "remittance_doc", tag: "doc", label: "Customer remittance advice (if a file)" }
-    ]}
+  /**
+   * Core ask: for each form TraceRoot fills, which source document/email
+   * does Export use today? (not just “can you send a sample”)
+   */
+  var FORM_SOURCE_STEPS = [
+    {
+      id: "pi",
+      sno: "00–01",
+      title: "Open shipment & final PI",
+      fills: "Buyer, addresses, qty, prices, payment/incoterms, packing, documents to provide, product lines",
+      sources: [
+        { id: "proforma_pdf", tag: "doc", label: "Proforma invoice PDF from Sales" },
+        { id: "pi_blank_template", tag: "doc", label: "Blank / master PI template" },
+        { id: "sales_pi_email", tag: "email", label: "Sales email that attaches the PI" },
+        { id: "pi_amend_email", tag: "email", label: "Sales amendment / price-change email" }
+      ]
+    },
+    {
+      id: "cro_loading",
+      sno: "02",
+      title: "CRO review & estimated loading date",
+      fills: "Booking #, vessel, POL, cut-offs / docs due; loading date that drives all deadlines",
+      sources: [
+        { id: "cro_pdf", tag: "doc", label: "CRO / booking confirmation PDF from forwarder" },
+        { id: "cro_forward_email", tag: "email", label: "Sales email forwarding the CRO" },
+        { id: "loading_date_email", tag: "email", label: "Sales / factory message with estimated loading date" },
+        { id: "loading_date_whatsapp", tag: "email", label: "WhatsApp / chat with loading date" }
+      ]
+    },
+    {
+      id: "ci_sap",
+      sno: "03",
+      title: "Commercial invoice (before SAP post)",
+      fills: "CI header, consignee, route, lines, weights, pallet type",
+      sources: [
+        { id: "final_pi", tag: "doc", label: "Final approved PI" },
+        { id: "cro_pdf", tag: "doc", label: "CRO (vessel / POL)" },
+        { id: "ci_template", tag: "doc", label: "CI Word / Excel template" },
+        { id: "sap_screen", tag: "note", label: "Typed directly in SAP (no source file)" }
+      ]
+    },
+    {
+      id: "gate",
+      sno: "04",
+      title: "Container # & outward gate pass",
+      fills: "Container, seal, vehicle, packages, qty, net/gross weight, driver, batch",
+      sources: [
+        { id: "gate_pass", tag: "doc", label: "Factory outward gate pass (photo / PDF)" },
+        { id: "container_whatsapp", tag: "email", label: "Transporter / depot WhatsApp with container #" },
+        { id: "container_email", tag: "email", label: "Email with container assignment" },
+        { id: "production_typed", tag: "note", label: "Production types packages/weights in TraceRoot only" }
+      ]
+    },
+    {
+      id: "customs_fia",
+      sno: "05",
+      title: "Customs invoice & bank FIA / FI request",
+      fills: "Customs invoice fields; FI request (bank, IBAN, amounts); later FIA # from PSW",
+      sources: [
+        { id: "final_pi", tag: "doc", label: "Final PI" },
+        { id: "gate_pass", tag: "doc", label: "Gate pass (packages / weights)" },
+        { id: "customs_template", tag: "doc", label: "Customs invoice template (Excel / PDF)" },
+        { id: "fi_request_xlsx", tag: "doc", label: "HBL FI REQUEST Excel template" },
+        { id: "bank_send_email", tag: "email", label: "Email sending FI form to bank" },
+        { id: "bank_amend_email", tag: "email", label: "Bank “correct and resend” email" },
+        { id: "psw_fia", tag: "note", label: "FIA # read from PSW portal" }
+      ]
+    },
+    {
+      id: "gd",
+      sno: "06",
+      title: "Clearing pack & GD",
+      fills: "Pack to clearing agent; GD number; Assigned → Gate In → Loading Allowed",
+      sources: [
+        { id: "customs_inv", tag: "doc", label: "Approved customs invoice" },
+        { id: "cro_pdf", tag: "doc", label: "CRO" },
+        { id: "fia_form", tag: "doc", label: "FIA / FI form (or FI #)" },
+        { id: "clearing_email", tag: "email", label: "Email to clearing agent (body + attachments)" },
+        { id: "gd_psw", tag: "doc", label: "GD PDF downloaded from PSW" }
+      ]
+    },
+    {
+      id: "fumigation",
+      sno: "07",
+      title: "Fumigation / TC / phyto (wood pallets only)",
+      fills: "Treatment request, affidavit, TC & phyto on file",
+      sources: [
+        { id: "customs_inv", tag: "doc", label: "Customs invoice (wood marking)" },
+        { id: "gd_copy", tag: "doc", label: "GD copy" },
+        { id: "affidavit", tag: "doc", label: "Per-shipment affidavit template" },
+        { id: "fumigator_email", tag: "email", label: "Email to fumigator" },
+        { id: "tc_cert", tag: "doc", label: "Treatment certificate" },
+        { id: "phyto_cert", tag: "doc", label: "Phytosanitary certificate" },
+        { id: "psw_vas", tag: "note", label: "PSW Value Added Services form" }
+      ]
+    },
+    {
+      id: "bl",
+      sno: "08",
+      title: "Draft B/L cross-check & OBL",
+      fills: "Draft BL fields vs GD packet; OBL confirmation",
+      sources: [
+        { id: "gd_packet", tag: "doc", label: "GD packet (customs inv + CRO + FIA + GD)" },
+        { id: "bl_format", tag: "doc", label: "BL FORMAT Word template (manual forwarders)" },
+        { id: "checking_copy_email", tag: "email", label: "Checking-copy email from forwarder / line" },
+        { id: "approve_email", tag: "email", label: "Your “Approved” / correction reply" },
+        { id: "obl_scan", tag: "doc", label: "Scanned OBL / HBL PDF" },
+        { id: "forwarder_portal", tag: "note", label: "Forwarder portal (e.g. Gama) — no file" }
+      ]
+    },
+    {
+      id: "ecoo",
+      sno: "09",
+      title: "CI revision, packing list & e-COO",
+      fills: "Post-OBL CI revision; packing list; ECO-GD / e-COO",
+      sources: [
+        { id: "gate_pass", tag: "doc", label: "Gate pass (for packing list)" },
+        { id: "obl", tag: "doc", label: "OBL / HBL" },
+        { id: "packing_template", tag: "doc", label: "Packing list template" },
+        { id: "ci_revision", tag: "doc", label: "Customs / commercial invoice for dates & PI #" },
+        { id: "ecoo_psw", tag: "doc", label: "e-COO PDF from PSW" },
+        { id: "vgm", tag: "doc", label: "VGM form (if used)" }
+      ]
+    },
+    {
+      id: "isf",
+      sno: "10",
+      title: "ISF worksheet (US customers)",
+      fills: "Flexport ISF parties, B/L, vessel, container, HTS",
+      sources: [
+        { id: "obl", tag: "doc", label: "OBL / HBL" },
+        { id: "vessel_forwarder", tag: "email", label: "Forwarder vessel / voyage update" },
+        { id: "isf_sheet", tag: "doc", label: "Flexport ISF Excel template" },
+        { id: "customer_master", tag: "note", label: "Customer master (IOR, consignee #, FDA)" },
+        { id: "isf_send_email", tag: "email", label: "Email sending ISF to customer / agent" },
+        { id: "isf_confirm_email", tag: "email", label: "Filing confirmation email" }
+      ]
+    },
+    {
+      id: "customer_pack",
+      sno: "11",
+      title: "Customer document pack",
+      fills: "Assemble & send the pack each buyer requires",
+      sources: [
+        { id: "doc_bank", tag: "doc", label: "Docs already on the shipment (CI, PL, OBL, e-COO, …)" },
+        { id: "customer_ci_layout", tag: "doc", label: "Customer-specific CI layout (if different)" },
+        { id: "pack_send_email", tag: "email", label: "Email template sending the pack" },
+        { id: "pack_amend_email", tag: "email", label: "Customer amendment request email" }
+      ]
+    },
+    {
+      id: "bank_docs",
+      sno: "12",
+      title: "Physical bank document set",
+      fills: "Covering letter + print checklist for bank submission",
+      sources: [
+        { id: "covering_letter", tag: "doc", label: "Covering letter template" },
+        { id: "ci", tag: "doc", label: "Commercial invoice" },
+        { id: "packing_list", tag: "doc", label: "Packing list" },
+        { id: "obl_scan", tag: "doc", label: "OBL scan" },
+        { id: "gd", tag: "doc", label: "GD" }
+      ]
+    },
+    {
+      id: "vessel_ar",
+      sno: "13–14",
+      title: "Vessel tracking & payment / AR",
+      fills: "Sail / ETA updates to customer; AR reminders; bank payment confirm",
+      sources: [
+        { id: "carrier_portal", tag: "note", label: "Carrier tracking website / portal" },
+        { id: "forwarder_eta_email", tag: "email", label: "Forwarder sailed / ETA email" },
+        { id: "ar_reminder_email", tag: "email", label: "Payment reminder template" },
+        { id: "bank_payment_email", tag: "email", label: "Bank payment-advice email" },
+        { id: "bank_confirm_reply", tag: "email", label: "Your reply confirming invoice / GD / partial" },
+        { id: "remittance", tag: "doc", label: "Customer remittance advice" }
+      ]
+    }
   ];
+
+  function emptyFormSource() {
+    return { sources: [], canSendSample: false, otherSource: "", notes: "" };
+  }
 
   var emptyCustomer = function () {
     return {
@@ -919,6 +1057,7 @@
     defaults: {},
     customers: [emptyCustomer()],
     products: [{ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" }],
+    formSources: {},
     documents: {}
   };
 
@@ -1020,7 +1159,9 @@
       }
       if (!state.banks) state.banks = [];
       if (!state.documents) state.documents = {};
+      if (!state.formSources) state.formSources = {};
       ensureIsfParties();
+      ensureFormSources();
       renderAll();
       setStatus("Restored draft", true);
     } catch (e) {
@@ -1550,35 +1691,103 @@
     scheduleSave();
   });
 
-  /* ---- documents ---- */
-  function renderDocs() {
-    var root = document.getElementById("docsList");
-    root.innerHTML = "";
-    DOC_ITEMS.forEach(function (g) {
-      var h = document.createElement("h3");
-      h.textContent = g.group;
-      root.appendChild(h);
-      var ul = document.createElement("ul");
-      ul.className = "checks";
-      g.items.forEach(function (it) {
-        var li = document.createElement("li");
-        var tagClass = it.tag === "email" ? "tag-email" : it.tag === "note" ? "tag-note" : "tag-doc";
-        var tagLabel = it.tag === "email" ? "Email" : it.tag === "note" ? "Note" : "Document";
-        li.innerHTML =
-          '<label><input type="checkbox" data-doc="' + it.id + '" />' +
-          '<span><span class="tag ' + tagClass + '">' + tagLabel + "</span>" +
-          escapeHtml(it.label) + "</span></label>";
-        ul.appendChild(li);
-        li.querySelector("input").checked = !!state.documents[it.id];
+  /* ---- form sources by step ---- */
+  function ensureFormSources() {
+    if (!state.formSources) state.formSources = {};
+    FORM_SOURCE_STEPS.forEach(function (step) {
+      if (!state.formSources[step.id]) {
+        state.formSources[step.id] = emptyFormSource();
+      }
+      if (!Array.isArray(state.formSources[step.id].sources)) {
+        state.formSources[step.id].sources = [];
+      }
+    });
+    // Migrate legacy flat documents.* checkboxes → formSources where ids match
+    Object.keys(state.documents || {}).forEach(function (docId) {
+      if (!state.documents[docId] || docId === "extraNotes") return;
+      FORM_SOURCE_STEPS.forEach(function (step) {
+        var hit = step.sources.find(function (s) { return s.id === docId; });
+        if (!hit) return;
+        var fs = state.formSources[step.id];
+        if (fs.sources.indexOf(docId) < 0) fs.sources.push(docId);
+        fs.canSendSample = true;
       });
-      root.appendChild(ul);
     });
   }
+
+  function renderDocs() {
+    ensureFormSources();
+    var root = document.getElementById("docsList");
+    root.innerHTML = "";
+    FORM_SOURCE_STEPS.forEach(function (step) {
+      var fs = state.formSources[step.id] || emptyFormSource();
+      var selected = {};
+      (fs.sources || []).forEach(function (id) { selected[id] = true; });
+      var card = document.createElement("div");
+      card.className = "source-step";
+      card.setAttribute("data-step", step.id);
+      var checks = step.sources.map(function (s) {
+        var tagClass = s.tag === "email" ? "tag-email" : s.tag === "note" ? "tag-note" : "tag-doc";
+        var tagLabel = s.tag === "email" ? "Email / chat" : s.tag === "note" ? "System" : "Document";
+        return '<label><input type="checkbox" data-src-step="' + step.id + '" data-src="' + s.id + '"' +
+          (selected[s.id] ? " checked" : "") + " />" +
+          '<span><span class="tag ' + tagClass + '">' + tagLabel + "</span>" +
+          escapeHtml(s.label) + "</span></label>";
+      }).join("");
+      card.innerHTML =
+        '<div class="step-head">' +
+        '<span class="step-no">' + escapeHtml(step.sno) + "</span>" +
+        '<span class="step-title">' + escapeHtml(step.title) + "</span>" +
+        "</div>" +
+        '<p class="fills"><strong>Form TraceRoot fills:</strong> ' + escapeHtml(step.fills) + "</p>" +
+        '<p class="ask-label">What do you use today to fill this? (tick all that apply)</p>' +
+        '<div class="check-grid">' + checks + "</div>" +
+        '<div class="grid" style="margin-top:8px">' +
+        '<label class="field full" style="flex-direction:row;align-items:center;gap:8px;font-weight:500">' +
+        '<input type="checkbox" data-src-sample="' + step.id + '"' +
+        (fs.canSendSample ? " checked" : "") + " />" +
+        "We can send a sample of the source(s) above</label>" +
+        '<label class="field full">Other source (if not listed)' +
+        '<input data-src-other="' + step.id + '" placeholder="e.g. shared Google Sheet, verbal from factory…" value="' +
+        escapeHtml(fs.otherSource || "") + '" /></label>' +
+        '<label class="field full">Notes for this step' +
+        '<input data-src-notes="' + step.id + '" placeholder="Optional" value="' +
+        escapeHtml(fs.notes || "") + '" /></label>' +
+        "</div>";
+      root.appendChild(card);
+    });
+  }
+
   document.getElementById("docsList").addEventListener("change", function (e) {
     var t = e.target;
-    if (!t.getAttribute("data-doc")) return;
-    state.documents[t.getAttribute("data-doc")] = !!t.checked;
-    scheduleSave();
+    ensureFormSources();
+    if (t.getAttribute("data-src-step")) {
+      var stepId = t.getAttribute("data-src-step");
+      var srcId = t.getAttribute("data-src");
+      var fs = state.formSources[stepId];
+      var idx = fs.sources.indexOf(srcId);
+      if (t.checked && idx < 0) fs.sources.push(srcId);
+      if (!t.checked && idx >= 0) fs.sources.splice(idx, 1);
+      scheduleSave();
+      return;
+    }
+    if (t.getAttribute("data-src-sample")) {
+      state.formSources[t.getAttribute("data-src-sample")].canSendSample = !!t.checked;
+      scheduleSave();
+    }
+  });
+  document.getElementById("docsList").addEventListener("input", function (e) {
+    var t = e.target;
+    ensureFormSources();
+    if (t.getAttribute("data-src-other")) {
+      state.formSources[t.getAttribute("data-src-other")].otherSource = t.value;
+      scheduleSave();
+      return;
+    }
+    if (t.getAttribute("data-src-notes")) {
+      state.formSources[t.getAttribute("data-src-notes")].notes = t.value;
+      scheduleSave();
+    }
   });
 
   function renderAll() {
@@ -1730,6 +1939,7 @@
       banks: [], contacts: {}, partners: {}, defaults: {},
       customers: [emptyCustomer()],
       products: [{ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" }],
+      formSources: {},
       documents: {}
     };
     renderAll();

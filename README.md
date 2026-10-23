@@ -27,10 +27,11 @@ Do **not** connect the SilverBirch-FE monorepo.
 ## Client workflow
 
 1. Open the Vercel URL.
-2. Fill **Company**, **Customers**, **Products**, **Partners**, and tick **Documents**.
-3. Optional: download CSV templates → fill in Excel → Import CSV.
-4. **Download JSON** → email TraceRoot (plus sample files).
-5. Optional: **Print**.
+2. Fill **Form sources** — for each shipment step, which document/email fills that form today.
+3. Fill **Company**, **Customers**, **Products**, **Partners**.
+4. Optional: CSV templates for customers/products → Import CSV.
+5. **Download JSON** → email TraceRoot (plus sample files).
+6. Optional: **Print**.
 
 ## JSON shape
 
@@ -59,7 +60,15 @@ Do **not** connect the SilverBirch-FE monorepo.
   "defaults": {},
   "customers": [],
   "products": [],
-  "documents": { "pi_filled_pdf": true }
+  "formSources": {
+    "ci_sap": {
+      "sources": ["final_pi", "cro_pdf"],
+      "canSendSample": true,
+      "otherSource": "",
+      "notes": ""
+    }
+  },
+  "documents": { "extraNotes": "" }
 }
 ```
 
