@@ -651,9 +651,9 @@
     <section class="panel" id="panel-products" role="tabpanel">
       <h2>4. Product / SKU catalog</h2>
       <p class="hint">
-        Pick a commodity from the list — <strong>HS code</strong> fills in automatically
-        (standard codes for salt, rice, spices, etc.). You can still override HS if needed.
-        Rows you add here also drive the customer “default product” picker.
+        Add the <strong>real SKUs you sell</strong> here (including bag size if that’s how you invoice —
+        e.g. “Basmati rice 25 kg bags”). The commodity picker only lists product
+        <em>types</em> so HS codes stay easy; bag-level detail belongs in this table or CSV.
       </p>
 
       <div class="csv-box">
@@ -849,20 +849,23 @@
     { id: "isf_confirmation", label: "ISF filing confirmation" }
   ];
 
-  /** Standard Agro Hub commodities → HS (as used on CI / packing / ISF). */
+  /**
+   * Seed commodities for HS lookup — product type only (not bag SKUs).
+   * Exact sellable SKUs / pack sizes belong on the Products tab (or CSV).
+   */
   var COMMODITY_CATALOG = [
-    { sku: "AH-SALT-FINE", description: "Himalayan Pink Salt — Fine", hsCode: "2501.0090", unit: "KG", typicalQty: "20000", unitPrice: "2.4" },
-    { sku: "AH-SALT-COARSE", description: "Himalayan Pink Salt — Coarse", hsCode: "2501.0090", unit: "KG", typicalQty: "18000", unitPrice: "2.15" },
-    { sku: "AH-SALT-PRODUCTS", description: "HIMALAYAN SALT PRODUCTS.", hsCode: "2501.0090", unit: "KG", typicalQty: "20000", unitPrice: "2.4" },
-    { sku: "AH-RICE-25", description: "Basmati rice, 25 kg bags", hsCode: "1006.30", unit: "bag", typicalQty: "800", unitPrice: "42.5" },
-    { sku: "AH-RICE-LG-50", description: "Long grain rice, 50 kg bags", hsCode: "1006.30", unit: "bag", typicalQty: "600", unitPrice: "38.0" },
-    { sku: "AH-RICE-BRK", description: "Broken rice, 25 kg bags", hsCode: "1006.40", unit: "bag", typicalQty: "1000", unitPrice: "28.5" },
-    { sku: "AH-SPICE-CUMIN", description: "Cumin seed whole, 25 kg bags", hsCode: "0909.31", unit: "bag", typicalQty: "500", unitPrice: "55.0" },
-    { sku: "AH-SPICE-CORIANDER", description: "Coriander seed, 25 kg bags", hsCode: "0909.21", unit: "bag", typicalQty: "500", unitPrice: "" },
-    { sku: "AH-SPICE-TURMERIC", description: "Turmeric powder, 25 kg bags", hsCode: "0910.30", unit: "bag", typicalQty: "500", unitPrice: "" },
-    { sku: "AH-SPICE-CHILI", description: "Red chili whole / crushed, 25 kg bags", hsCode: "0904.21", unit: "bag", typicalQty: "500", unitPrice: "" },
-    { sku: "AH-PALLET-WOOD", description: "Wooden pallet", hsCode: "4415.20", unit: "PCS", typicalQty: "1", unitPrice: "" },
-    { sku: "AH-PALLET-NONWOOD", description: "Non-wood pallet", hsCode: "3923.90", unit: "PCS", typicalQty: "1", unitPrice: "" }
+    { sku: "SALT-FINE", description: "Himalayan pink salt — fine", hsCode: "2501.0090", unit: "KG", typicalQty: "", unitPrice: "" },
+    { sku: "SALT-COARSE", description: "Himalayan pink salt — coarse", hsCode: "2501.0090", unit: "KG", typicalQty: "", unitPrice: "" },
+    { sku: "SALT", description: "Himalayan salt products", hsCode: "2501.0090", unit: "KG", typicalQty: "", unitPrice: "" },
+    { sku: "RICE-BASMATI", description: "Basmati rice", hsCode: "1006.30", unit: "KG", typicalQty: "", unitPrice: "" },
+    { sku: "RICE-LONG", description: "Long grain rice", hsCode: "1006.30", unit: "KG", typicalQty: "", unitPrice: "" },
+    { sku: "RICE-BROKEN", description: "Broken rice", hsCode: "1006.40", unit: "KG", typicalQty: "", unitPrice: "" },
+    { sku: "CUMIN", description: "Cumin seed (whole)", hsCode: "0909.31", unit: "KG", typicalQty: "", unitPrice: "" },
+    { sku: "CORIANDER", description: "Coriander seed", hsCode: "0909.21", unit: "KG", typicalQty: "", unitPrice: "" },
+    { sku: "TURMERIC", description: "Turmeric powder", hsCode: "0910.30", unit: "KG", typicalQty: "", unitPrice: "" },
+    { sku: "CHILI", description: "Red chili (whole / crushed)", hsCode: "0904.21", unit: "KG", typicalQty: "", unitPrice: "" },
+    { sku: "PALLET-WOOD", description: "Wooden pallet", hsCode: "4415.20", unit: "PCS", typicalQty: "1", unitPrice: "" },
+    { sku: "PALLET-NONWOOD", description: "Non-wood pallet", hsCode: "3923.90", unit: "PCS", typicalQty: "1", unitPrice: "" }
   ];
 
   var HS_BY_KEYWORD = [
@@ -940,7 +943,9 @@
       if (seen[key]) return;
       seen[key] = true;
       var primary = c.description || c.sku;
-      var secondary = [c.sku, c.hsCode].filter(Boolean).join(" · ");
+      var secondary = c.hsCode
+        ? ("HS " + c.hsCode + (c.sku ? " · " + c.sku : ""))
+        : (c.sku || "");
       opts.push({
         value: primary,
         primary: primary,
@@ -949,6 +954,7 @@
         description: c.description || ""
       });
     }
+    // Seed commodities first, then any real SKUs the client added on Products
     COMMODITY_CATALOG.forEach(add);
     (state.products || []).forEach(add);
     return opts;
@@ -2303,7 +2309,7 @@
         fieldList("freightMarking", "Freight marking", "lov-freight", i) +
         '<label class="field">Default SKU / commodity' +
         '<input data-cust="' + i + '" data-k="productSku" data-combo="lov-commodity" placeholder="Pick commodity — HS fills in" autocomplete="off" />' +
-        '<span class="why">Pick from catalog; HS auto-fills</span></label>' +
+        '<span class="why">Commodity type only; add bag-size SKUs on Products</span></label>' +
         '<label class="field">Default description' +
         '<input data-cust="' + i + '" data-k="productDescription" data-combo="lov-commodity" placeholder="Pick or type commodity" autocomplete="off" />' +
         '</label>' +
