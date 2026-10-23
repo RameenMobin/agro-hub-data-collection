@@ -1863,22 +1863,27 @@
         (c.name ? " — " + escapeHtml(c.name) : "") +
         '</strong><button type="button" class="rm" data-rm-cust="' + i + '">Remove</button></div>' +
         '<div class="grid">' +
-        field("name", "Legal name", i) +
+        field("name", "Legal / buyer name", i) +
         field("email", "Ops / docs email", i, "email") +
         fieldList("country", "Country", "lov-country", i) +
-        field("shipTo", "Ship-to display name", i) +
-        '<label class="field full" style="flex-direction:row;align-items:center;gap:8px;font-weight:500">' +
-        '<input type="checkbox" data-cust-action="copyConsignee" data-cust-i="' + i + '" />' +
-        "Consignee same as ship-to</label>" +
-        field("consignee", "Consignee name", i) +
-        fieldFull("consigneeAddress", "Consignee address", i) +
+        '<div class="field full" style="margin:4px 0 0">' +
+        '<strong style="font-size:13px;color:var(--navy)">Where goods are delivered (on B/L &amp; invoices)</strong>' +
+        '<p class="hint" style="margin:4px 0 0">Consignee = who appears on the bill of lading as receiving the cargo. ' +
+        'Notify = who gets arrival notices (often the same company).</p></div>' +
+        '<label class="field full">Delivery name <span class="why">Optional short name for the destination, e.g. “Olde Foods — Ocala DC”. Leave blank if same as legal name.</span>' +
+        '<input data-cust="' + i + '" data-k="shipTo" placeholder="Same as legal name if blank" /></label>' +
+        '<label class="field full" style="flex-direction:row;align-items:flex-start;gap:8px;font-weight:500">' +
+        '<input type="checkbox" data-cust-action="copyConsignee" data-cust-i="' + i + '" style="margin-top:3px" />' +
+        '<span>Consignee is the same as the delivery name above <span style="font-weight:400;color:var(--muted)">(or legal name if delivery name is blank)</span></span></label>' +
+        field("consignee", "Consignee name (on B/L)", i) +
+        fieldFull("consigneeAddress", "Consignee full address", i) +
         fieldList("consigneeCountry", "Consignee country", "lov-country", i) +
-        '<label class="field full" style="flex-direction:row;align-items:center;gap:8px;font-weight:500">' +
-        '<input type="checkbox" data-cust-action="copyNotify" data-cust-i="' + i + '" />' +
-        "Notify same as consignee</label>" +
-        field("notifyParty", "Notify party", i) +
+        '<label class="field full" style="flex-direction:row;align-items:flex-start;gap:8px;font-weight:500">' +
+        '<input type="checkbox" data-cust-action="copyNotify" data-cust-i="' + i + '" style="margin-top:3px" />' +
+        '<span>Notify party is the same as consignee</span></label>' +
+        field("notifyParty", "Notify party name", i) +
         fieldFull("notifyAddress", "Notify address", i) +
-        field("notifyContact", "Notify contact", i) +
+        field("notifyContact", "Notify contact (email / phone)", i) +
         fieldList("pod", "Usual POD", "lov-pod", i) +
         fieldList("paymentTerms", "Payment terms", "lov-payment", i) +
         fieldList("incoterms", "Incoterms", "lov-incoterms", i) +
@@ -1989,9 +1994,8 @@
       var i = +t.getAttribute("data-cust-i");
       if (t.checked) {
         var c = state.customers[i];
-        c.consignee = c.shipTo || c.name || "";
-        c.consigneeAddress = c.consigneeAddress || "";
-        c.consigneeCountry = c.consigneeCountry || c.country || "";
+        c.consignee = (c.shipTo || c.name || "").trim();
+        if (!c.consigneeCountry) c.consigneeCountry = c.country || "";
         renderCustomers();
         scheduleSave();
       }
