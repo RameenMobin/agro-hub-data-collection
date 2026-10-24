@@ -41,22 +41,22 @@ folder is configured as the root directory.
   "company": {},
   "banks": [],
   "lovs": {
-    "payment_terms": [{ "code": "", "label": "" }],
-    "packaging": [{ "code": "", "label": "" }]
+    "payment_terms": ["Net 30", "CAD"],
+    "packaging": ["25 kg bags", "Bulk (kg)"]
   },
   "products": [{
     "sku": "",
     "name": "",
     "hsCode": "",
     "uom": "KG",
-    "packagingCodes": ["25KG_BAG", "BULK_KG"]
+    "packaging": ["25 kg bags", "Bulk (kg)"]
   }],
   "customers": [{
     "id": "",
     "name": "",
     "productSkus": ["AH-SALT-FINE"],
     "productPackaging": {
-      "AH-SALT-FINE": ["BULK_KG"]
+      "AH-SALT-FINE": ["Bulk (kg)"]
     }
   }],
   "forwarders": [],
@@ -64,5 +64,5 @@ folder is configured as the root directory.
 }
 ```
 
-If `productPackaging[sku]` is omitted, the customer may use **all** packs defined
-on that product.
+LOVs are **values only** (no codes/keys). If `productPackaging[sku]` is omitted,
+the customer may use **all** packs defined on that product.

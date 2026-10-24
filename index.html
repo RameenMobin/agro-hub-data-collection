@@ -140,7 +140,7 @@
     }
     .lov-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
     .lov-row {
-      display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 8px; align-items: center;
+      display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
     }
     .lov-row input { width: 100%; }
     .nav-footer {
@@ -233,7 +233,7 @@
     <!-- 2 LOVS -->
     <section class="panel" id="panel-lovs" data-panel="lovs">
       <h2>2. Dropdown lists (LOVs)</h2>
-      <p class="hint">Closed lists used across the dashboard. Consignee comes from Customers — not listed here. Carriers / vessels grow later from CRO / BL.</p>
+      <p class="hint">Enter only the values people should see in the dropdown (e.g. “Net 30”, “Karachi Port”). No codes or keys. Consignee comes from Customers. Carriers / vessels grow later from CRO / BL.</p>
       <div id="lovsRoot"></div>
       <div class="nav-footer">
         <button type="button" class="sec" data-next="company">← Company</button>
@@ -359,35 +359,15 @@
       ],
       lovs: {
         payment_terms: [
-          { code: "CAD_ADV_100", label: "100% CAD Advance" },
-          { code: "CAD", label: "CAD" },
-          { code: "ADV", label: "ADV" },
-          { code: "NET30", label: "Net 30" },
-          { code: "NET45", label: "Net 45" },
-          { code: "NET60", label: "Net 60" }
+          "100% CAD Advance", "CAD", "ADV", "Net 30", "Net 45", "Net 60"
         ],
         incoterms: [
-          { code: "FOB", label: "FOB - Free On Board" },
-          { code: "CFR", label: "CFR - Cost & Freight" },
-          { code: "CIF", label: "CIF - Cost Insurance & Freight" }
+          "FOB - Free On Board", "CFR - Cost & Freight", "CIF - Cost Insurance & Freight"
         ],
-        port_of_loading: [
-          { code: "KHI", label: "Karachi Port" },
-          { code: "PQ", label: "Port Qasim" }
-        ],
-        port_of_destination: [
-          { code: "JAX", label: "JACKSONVILLE, U.S.A." },
-          { code: "NYC", label: "NEW YORK, U.S.A." }
-        ],
-        packaging: [
-          { code: "25KG_BAG", label: "25 kg bags" },
-          { code: "50KG_BAG", label: "50 kg bags" },
-          { code: "BULK_KG", label: "Bulk (kg)" }
-        ],
-        pallet_type: [
-          { code: "WOOD", label: "Wooden pallets" },
-          { code: "PLASTIC", label: "Plastic / other" }
-        ]
+        port_of_loading: ["Karachi Port", "Port Qasim"],
+        port_of_destination: ["JACKSONVILLE, U.S.A.", "NEW YORK, U.S.A."],
+        packaging: ["25 kg bags", "50 kg bags", "Bulk (kg)"],
+        pallet_type: ["Wooden pallets", "Plastic / other"]
       },
       products: [],
       customers: [],
@@ -433,12 +413,42 @@
       if (!raw) return;
       var parsed = JSON.parse(raw);
       if (parsed && parsed.kind === "agro-hub-masters") {
-        state = Object.assign(defaultState(), parsed);
-        state.lovs = Object.assign(defaultState().lovs, parsed.lovs || {});
-        state.company = Object.assign(defaultState().company, parsed.company || {});
+        var base = defaultState();
+        state = Object.assign(base, parsed);
+        state.lovs = Object.assign({}, base.lovs, parsed.lovs || {});
+        Object.keys(state.lovs).forEach(function (k) {
+          state.lovs[k] = normalizeLovList(state.lovs[k]);
+        });
+        state.company = Object.assign({}, base.company, parsed.company || {});
         state.sampleChecks = Object.assign({ docs: {}, emails: {} }, parsed.sampleChecks || {});
+        state.products = (parsed.products || []).map(function (p) {
+          return Object.assign({}, p, {
+            packaging: normalizePackList(p.packaging || p.packagingCodes || [])
+          });
+        });
+        state.customers = (parsed.customers || []).map(function (c) {
+          var pp = {};
+          Object.keys(c.productPackaging || {}).forEach(function (sku) {
+            pp[sku] = normalizePackList(c.productPackaging[sku]);
+          });
+          return Object.assign({}, c, { productPackaging: pp });
+        });
       }
     } catch (e) { /* ignore */ }
+  }
+
+  function lovValue(item) {
+    if (item == null) return "";
+    if (typeof item === "string") return item.trim();
+    return String(item.label || item.value || item.code || "").trim();
+  }
+
+  function normalizeLovList(list) {
+    return (list || []).map(lovValue).filter(Boolean);
+  }
+
+  function normalizePackList(list) {
+    return (list || []).map(lovValue).filter(Boolean);
   }
 
   function goStep(id) {
@@ -550,13 +560,13 @@
   function renderLovs() {
     var root = $("#lovsRoot");
     root.innerHTML = LOV_META.map(function (m) {
-      var rows = state.lovs[m.key] || [];
+      var rows = normalizeLovList(state.lovs[m.key]);
+      state.lovs[m.key] = rows;
       return '<div class="lov-block" data-lov="' + m.key + '">' +
         "<h4>" + m.title + "</h4>" +
-        '<div class="lov-list">' + rows.map(function (r, i) {
+        '<div class="lov-list">' + rows.map(function (val, i) {
           return '<div class="lov-row" data-i="' + i + '">' +
-            '<input placeholder="code" data-f="code" value="' + esc(r.code) + '" />' +
-            '<input placeholder="label" data-f="label" value="' + esc(r.label) + '" />' +
+            '<input placeholder="Dropdown value" data-lov-val value="' + esc(val) + '" />' +
             '<button type="button" class="danger" data-del-lov="' + i + '">×</button></div>';
         }).join("") + "</div>" +
         '<button type="button" class="sec" data-add-lov="' + m.key + '">+ Add</button></div>';
@@ -566,7 +576,7 @@
       btn.addEventListener("click", function () {
         var k = btn.getAttribute("data-add-lov");
         state.lovs[k] = state.lovs[k] || [];
-        state.lovs[k].push({ code: "", label: "" });
+        state.lovs[k].push("");
         renderLovs(); scheduleSave();
       });
     });
@@ -580,23 +590,26 @@
       });
       $all(".lov-row", block).forEach(function (row) {
         var i = +row.getAttribute("data-i");
-        $all("input", row).forEach(function (inp) {
-          inp.addEventListener("input", function () {
-            state.lovs[key][i][inp.getAttribute("data-f")] = inp.value;
-            scheduleSave();
-          });
+        var inp = $("[data-lov-val]", row);
+        if (!inp) return;
+        inp.addEventListener("input", function () {
+          state.lovs[key][i] = inp.value;
+          scheduleSave();
         });
       });
     });
   }
 
   function packagingOptions() {
-    return (state.lovs.packaging || []).filter(function (p) { return p.code || p.label; });
+    return normalizeLovList(state.lovs.packaging);
   }
 
-  function labelForPack(code) {
-    var p = packagingOptions().find(function (x) { return x.code === code; });
-    return p ? (p.label || p.code) : code;
+  function labelForPack(value) {
+    return value || "";
+  }
+
+  function productPacks(p) {
+    return normalizePackList(p.packaging || p.packagingCodes || []);
   }
 
   /* ---------- Products ---------- */
@@ -609,12 +622,12 @@
       return;
     }
     root.innerHTML = state.products.map(function (p, i) {
-      var chips = packs.map(function (pk) {
-        var code = pk.code || pk.label;
-        var on = (p.packagingCodes || []).indexOf(code) >= 0;
+      var selected = productPacks(p);
+      var chips = packs.map(function (val) {
+        var on = selected.indexOf(val) >= 0;
         return '<label class="chip' + (on ? " on" : "") + '">' +
-          '<input type="checkbox" data-pack="' + esc(code) + '"' + (on ? " checked" : "") + " />" +
-          esc(pk.label || pk.code) + "</label>";
+          '<input type="checkbox" data-pack="' + esc(val) + '"' + (on ? " checked" : "") + " />" +
+          esc(val) + "</label>";
       }).join("") || '<span class="meta">No packaging LOVs yet</span>';
       return '<div class="row-card" data-prod-i="' + i + '">' +
         '<header><div><strong>' + esc(p.name || "Untitled product") + '</strong>' +
@@ -673,11 +686,12 @@
       });
       $all("[data-pack]", card).forEach(function (cb) {
         cb.addEventListener("change", function () {
-          var code = cb.getAttribute("data-pack");
-          var list = state.products[i].packagingCodes || (state.products[i].packagingCodes = []);
-          var ix = list.indexOf(code);
-          if (cb.checked && ix < 0) list.push(code);
+          var val = cb.getAttribute("data-pack");
+          var list = state.products[i].packaging || (state.products[i].packaging = []);
+          var ix = list.indexOf(val);
+          if (cb.checked && ix < 0) list.push(val);
           if (!cb.checked && ix >= 0) list.splice(ix, 1);
+          delete state.products[i].packagingCodes;
           cb.closest(".chip").classList.toggle("on", cb.checked);
           scheduleSave();
         });
@@ -688,8 +702,11 @@
   /* ---------- Customers ---------- */
   function optionHtml(list, selected, labelFn) {
     return (list || []).map(function (item) {
-      var val = typeof item === "string" ? item : (item.code || item.id || "");
-      var lab = labelFn ? labelFn(item) : (item.label || item.name || val);
+      var lab = labelFn ? labelFn(item) : lovValue(item);
+      if (item && typeof item === "object" && (item.id || item.name) && !item.label && !item.value) {
+        lab = item.name || item.id;
+      }
+      var val = typeof item === "string" ? item : (item.id || lab);
       return '<option value="' + esc(val) + '"' + (selected === val || selected === lab ? " selected" : "") + ">" +
         esc(lab) + "</option>";
     }).join("");
@@ -718,18 +735,18 @@
       var packBlocks = (c.productSkus || []).map(function (sku) {
         var prod = state.products.find(function (p) { return p.sku === sku; });
         if (!prod) return "";
-        var allowed = prod.packagingCodes || [];
+        var allowed = productPacks(prod);
         if (!allowed.length) {
           return '<div style="margin-top:8px"><strong style="font-size:12px;color:var(--ink)">' +
             esc(prod.name || sku) + '</strong><div class="meta">No packaging on this product yet</div></div>';
         }
         var restricted = c.productPackaging && c.productPackaging[sku];
         var selected = restricted || allowed.slice();
-        var chips = allowed.map(function (code) {
-          var on = selected.indexOf(code) >= 0;
+        var chips = allowed.map(function (val) {
+          var on = selected.indexOf(val) >= 0;
           return '<label class="chip' + (on ? " on" : "") + '">' +
-            '<input type="checkbox" data-cpack-sku="' + esc(sku) + '" data-cpack="' + esc(code) + '"' +
-            (on ? " checked" : "") + " />" + esc(labelForPack(code)) + "</label>";
+            '<input type="checkbox" data-cpack-sku="' + esc(sku) + '" data-cpack="' + esc(val) + '"' +
+            (on ? " checked" : "") + " />" + esc(val) + "</label>";
         }).join("");
         return '<div style="margin-top:10px">' +
           '<label class="field">Packaging for <em>' + esc(prod.name || sku) + '</em>' +
@@ -754,16 +771,16 @@
         '<label class="field">Email 2<input data-cf="contactEmail2" value="' + esc(c.contactEmail2 || "") + '" /></label>' +
         '<label class="field">FDA registration (importer)<input data-cf="fdaRegistrationNo" value="' + esc(c.fdaRegistrationNo || "") + '" /></label>' +
         '<label class="field">Default port of destination<select data-cf="defaultPortOfDestination">' +
-        '<option value="">—</option>' + optionHtml(pods, c.defaultPortOfDestination, function (x) { return x.label; }) +
+        '<option value="">—</option>' + optionHtml(pods, c.defaultPortOfDestination) +
         "</select></label>" +
         '<label class="field">Payment terms<select data-cf="defaultPaymentTerms">' +
-        '<option value="">—</option>' + optionHtml(pay, c.defaultPaymentTerms, function (x) { return x.label; }) +
+        '<option value="">—</option>' + optionHtml(pay, c.defaultPaymentTerms) +
         "</select></label>" +
         '<label class="field">Incoterms<select data-cf="defaultIncoterms">' +
-        '<option value="">—</option>' + optionHtml(inco, c.defaultIncoterms, function (x) { return x.label; }) +
+        '<option value="">—</option>' + optionHtml(inco, c.defaultIncoterms) +
         "</select></label>" +
         '<label class="field">Default forwarder<select data-cf="defaultForwarderId">' +
-        '<option value="">—</option>' + optionHtml(fwds, c.defaultForwarderId, function (x) { return x.name + " (" + x.id + ")"; }) +
+        '<option value="">—</option>' + optionHtml(fwds, c.defaultForwarderId, function (x) { return x.name; }) +
         "</select></label>" +
         '<label class="field">BL path<select data-cf="blPath">' +
         '<option value="manual"' + (c.blPath === "manual" ? " selected" : "") + ">manual</option>" +
@@ -831,15 +848,14 @@
       $all("[data-cpack]", card).forEach(function (cb) {
         cb.addEventListener("change", function () {
           var sku = cb.getAttribute("data-cpack-sku");
-          var code = cb.getAttribute("data-cpack");
+          var val = cb.getAttribute("data-cpack");
           var prod = state.products.find(function (p) { return p.sku === sku; });
-          var allowed = (prod && prod.packagingCodes) || [];
+          var allowed = prod ? productPacks(prod) : [];
           c.productPackaging = c.productPackaging || {};
           var cur = (c.productPackaging[sku] || allowed).slice();
-          var ix = cur.indexOf(code);
-          if (cb.checked && ix < 0) cur.push(code);
+          var ix = cur.indexOf(val);
+          if (cb.checked && ix < 0) cur.push(val);
           if (!cb.checked && ix >= 0) cur.splice(ix, 1);
-          // If selection equals full product list, clear restriction
           var same = cur.length === allowed.length && allowed.every(function (a) { return cur.indexOf(a) >= 0; });
           if (same) delete c.productPackaging[sku];
           else c.productPackaging[sku] = cur;
@@ -965,31 +981,31 @@
 
     var lovRows = [];
     LOV_META.forEach(function (m) {
-      (state.lovs[m.key] || []).forEach(function (r, i) {
-        lovRows.push({ list_name: m.key, code: r.code, label: r.label, sort_order: (i + 1) * 10 });
+      normalizeLovList(state.lovs[m.key]).forEach(function (val, i) {
+        lovRows.push({ list_name: m.key, value: val, sort_order: (i + 1) * 10 });
       });
     });
     sheet("LOVs", lovRows);
 
     sheet("Products", state.products.map(function (p) {
+      var packs = productPacks(p);
       return {
         sku: p.sku,
         product_name_description: p.name,
         hs_code: p.hsCode,
         unit_of_measurement: p.uom,
-        packaging_types: (p.packagingCodes || []).map(labelForPack).join(" | "),
-        packaging_codes: (p.packagingCodes || []).join("|"),
+        packaging_types: packs.join(" | "),
         notes: p.notes || ""
       };
     }));
 
     var pp = [];
     state.products.forEach(function (p) {
-      (p.packagingCodes || []).forEach(function (code) {
-        pp.push({ sku: p.sku, packaging_code: code, packaging_label: labelForPack(code) });
+      productPacks(p).forEach(function (val) {
+        pp.push({ sku: p.sku, packaging: val });
       });
     });
-    sheet("Product Packaging", pp.length ? pp : [{ sku: "", packaging_code: "", packaging_label: "" }]);
+    sheet("Product Packaging", pp.length ? pp : [{ sku: "", packaging: "" }]);
 
     sheet("Customers", state.customers.map(function (c) {
       return {
@@ -1024,17 +1040,16 @@
       (c.productSkus || []).forEach(function (sku) {
         var prod = state.products.find(function (p) { return p.sku === sku; });
         var packs = (c.productPackaging && c.productPackaging[sku]) ||
-          (prod && prod.packagingCodes) || [];
+          (prod ? productPacks(prod) : []);
         cp.push({
           customer_id: c.id,
           sku: sku,
           product_name: prod ? prod.name : "",
-          packaging_types: packs.map(labelForPack).join(" | "),
-          packaging_codes: packs.join("|")
+          packaging_types: packs.join(" | ")
         });
       });
     });
-    sheet("Customer Products", cp.length ? cp : [{ customer_id: "", sku: "", product_name: "", packaging_types: "", packaging_codes: "" }]);
+    sheet("Customer Products", cp.length ? cp : [{ customer_id: "", sku: "", product_name: "", packaging_types: "" }]);
 
     sheet("Forwarders", state.forwarders.map(function (f) {
       return {
@@ -1089,7 +1104,7 @@
         name: "",
         hsCode: "",
         uom: "KG",
-        packagingCodes: [],
+        packaging: [],
         notes: ""
       });
       renderProducts(); scheduleSave();
