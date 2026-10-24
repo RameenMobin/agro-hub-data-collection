@@ -850,10 +850,15 @@
   }
 
   function countrySelectHtml(value, key) {
+    // Avoid name/id/autocomplete tokens browsers treat as address fields
     return '<div class="csel" data-csel="' + esc(key) + '">' +
-      '<input class="csel-input" type="text" autocomplete="off" spellcheck="false" ' +
+      '<input class="csel-input" type="text" inputmode="search" ' +
+      'name="agro-csel-' + esc(key) + '" id="agro-csel-' + esc(key) + '" ' +
+      'autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" ' +
+      'data-lpignore="true" data-1p-ignore="true" data-form-type="other" ' +
+      'role="combobox" aria-autocomplete="list" aria-expanded="false" readonly ' +
       'placeholder="Search country…" value="' + esc(value || "") + '" data-csel-input />' +
-      '<div class="csel-panel" data-csel-panel></div></div>';
+      '<div class="csel-panel" data-csel-panel role="listbox"></div></div>';
   }
 
   function bindCountrySelect(root, key, getValue, setValue) {
@@ -862,6 +867,11 @@
     var inp = $("[data-csel-input]", wrap);
     var panel = $("[data-csel-panel]", wrap);
     if (!inp || !panel) return;
+
+    // Chrome ignores autocomplete=off on address-ish fields; readonly-until-focus blocks its popup
+    function unlockInput() {
+      inp.removeAttribute("readonly");
+    }
 
     function renderOpts(q) {
       var query = String(q || "").trim().toLowerCase();
@@ -884,23 +894,37 @@
           var val = btn.getAttribute("data-csel-opt");
           setValue(val);
           inp.value = val;
-          wrap.classList.remove("open");
+          close();
           scheduleSave();
         });
       });
     }
 
     function open() {
+      unlockInput();
       $all(".csel.open").forEach(function (el) {
         if (el !== wrap) el.classList.remove("open");
       });
       $all(".msel.open").forEach(function (el) { el.classList.remove("open"); });
       wrap.classList.add("open");
+      inp.setAttribute("aria-expanded", "true");
       renderOpts(inp.value);
     }
 
-    inp.addEventListener("focus", open);
-    inp.addEventListener("click", open);
+    function close() {
+      wrap.classList.remove("open");
+      inp.setAttribute("aria-expanded", "false");
+    }
+
+    inp.addEventListener("focus", function () {
+      // Delay unlock so Chrome's autofill gesture doesn't fire on the same focus
+      setTimeout(unlockInput, 30);
+      open();
+    });
+    inp.addEventListener("click", function () {
+      unlockInput();
+      open();
+    });
     inp.addEventListener("input", function () {
       // Allow free-text while searching; commit exact country on pick / blur match
       setValue(inp.value);
@@ -910,7 +934,7 @@
     });
     inp.addEventListener("keydown", function (e) {
       if (e.key === "Escape") {
-        wrap.classList.remove("open");
+        close();
         return;
       }
       if (e.key === "Enter") {
@@ -920,7 +944,7 @@
           var val = first.getAttribute("data-csel-opt");
           setValue(val);
           inp.value = val;
-          wrap.classList.remove("open");
+          close();
           scheduleSave();
         }
       }
@@ -960,7 +984,7 @@
       return '<label class="field' + full + '">' + f[1] +
         '<input data-company="' + f[0] + '" value="' + esc(c[f[0]] || "") + '" /></label>';
     }).join("") +
-      '<label class="field">Country' + countrySelectHtml(c.country || "", "company-country") + "</label>" +
+      '<div class="field"><span class="lbl">Country</span>' + countrySelectHtml(c.country || "", "company-country") + "</div>" +
       contactsBlockHtml(c.contacts, "company");
     $("#companyForm").innerHTML = html;
     $all("[data-company]").forEach(function (inp) {
@@ -1532,7 +1556,7 @@
         '<label class="field full">Street<input data-cf="addressStreet" value="' + esc(c.addressStreet) + '" /></label>' +
         '<label class="field">City<input data-cf="addressCity" value="' + esc(c.addressCity) + '" /></label>' +
         '<label class="field">Postal / zip<input data-cf="addressPostalCode" value="' + esc(c.addressPostalCode) + '" /></label>' +
-        '<label class="field">Country' + countrySelectHtml(c.addressCountry || "", "cust-country-" + i) + "</label>" +
+        '<div class="field"><span class="lbl">Country</span>' + countrySelectHtml(c.addressCountry || "", "cust-country-" + i) + "</div>" +
         '<label class="field">FDA registration (importer)<input data-cf="fdaRegistrationNo" value="' + esc(c.fdaRegistrationNo || "") + '" /></label>' +
         contactsBlockHtml(c.contacts, "cust-" + i) +
         '<label class="field">Default port of destination' +
