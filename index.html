@@ -803,9 +803,10 @@
       var prodChips = state.products.map(function (p) {
         if (!p.sku) return "";
         var on = (c.productSkus || []).indexOf(p.sku) >= 0;
+        var label = String(p.name || "").trim() || "Untitled product";
         return '<label class="chip' + (on ? " on" : "") + '">' +
           '<input type="checkbox" data-cprod="' + esc(p.sku) + '"' + (on ? " checked" : "") + " />" +
-          esc(p.name || p.sku) + "</label>";
+          esc(label) + "</label>";
       }).join("") || '<span class="meta">Add products in step 3 first</span>';
 
       var packBlocks = (c.productSkus || []).map(function (sku) {
@@ -822,8 +823,9 @@
                 (on ? " checked" : "") + " />" + esc(val) + "</label>";
             }).join("")
           : '<span class="meta">No packaging on this product yet — add below</span>';
+        var prodLabel = String(prod.name || "").trim() || "Untitled product";
         return '<div style="margin-top:10px" data-cust-pack-sku="' + esc(sku) + '">' +
-          '<label class="field">Packaging for <em>' + esc(prod.name || sku) + '</em>' +
+          '<label class="field">Packaging for <em>' + esc(prodLabel) + '</em>' +
           '<span class="why">Untick packs this customer never uses. Add a new type to update the Packaging LOV + this product.</span></label>' +
           '<div class="chip-grid">' + chips + "</div>" +
           '<div class="add-inline"><input data-new-cpack placeholder="Add packaging for this product" />' +
@@ -849,8 +851,6 @@
         '<label class="field">Default port of destination<select data-cf="defaultPortOfDestination">' +
         '<option value="">—</option>' + optionHtml(pods, c.defaultPortOfDestination) +
         "</select></label>" +
-        '<label class="field full">Default document pack<span class="why">e.g. bill_of_lading | packing_list | e_coo | customer_invoice</span>' +
-        '<input data-cf="defaultDocumentPack" value="' + esc(c.defaultDocumentPack || "") + '" /></label>' +
         "</div>" +
         '<div class="add-inline" style="margin-top:8px">' +
         '<input data-new-pod placeholder="Or add a new port of destination" />' +
@@ -1136,8 +1136,10 @@
         contact_email_2: c.contactEmail2 || "",
         default_port_of_destination: c.defaultPortOfDestination,
         fda_registration_no: c.fdaRegistrationNo || "",
-        default_document_pack: c.defaultDocumentPack || "",
-        product_skus: (c.productSkus || []).join("|")
+        product_names: (c.productSkus || []).map(function (sku) {
+          var p = state.products.find(function (x) { return x.sku === sku; });
+          return p && p.name ? p.name : sku;
+        }).join(" | ")
       };
     }));
 
@@ -1229,7 +1231,6 @@
         contactEmail2: "",
         fdaRegistrationNo: "",
         defaultPortOfDestination: "",
-        defaultDocumentPack: "",
         productSkus: [],
         productPackaging: {}
       });
