@@ -377,7 +377,21 @@
         port_of_destination: ["JACKSONVILLE, U.S.A.", "NEW YORK, U.S.A."],
         packaging: ["25 kg bags", "50 kg bags", "Bulk (kg)"],
         uom: ["KG", "bag", "LB", "MT"],
-        hs_codes: ["2501.0090", "1006.30", "1006.40"],
+        // Seed with codes Agro Hub already uses; client can add more on the fly
+        hs_codes: [
+          "2501.00",
+          "2501.0090",
+          "1006.30",
+          "1006.40",
+          "0909.31",
+          "0713.10",
+          "0713.20",
+          "1001.19",
+          "1005.90",
+          "1101.00",
+          "1207.40",
+          "1515.90"
+        ],
         pallet_type: ["Wooden pallets", "Plastic / other"]
       },
       products: [],
@@ -429,6 +443,10 @@
         state.lovs = Object.assign({}, base.lovs, parsed.lovs || {});
         Object.keys(state.lovs).forEach(function (k) {
           state.lovs[k] = normalizeLovList(state.lovs[k]);
+        });
+        // Ensure default HS seeds appear even if an older draft omitted them
+        (base.lovs.hs_codes || []).forEach(function (code) {
+          ensureLov("hs_codes", code);
         });
         state.company = Object.assign({}, base.company, parsed.company || {});
         state.sampleChecks = Object.assign({ docs: {}, emails: {} }, parsed.sampleChecks || {});
