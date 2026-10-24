@@ -743,10 +743,7 @@
       root.innerHTML = '<div class="empty">No customers yet</div>';
       return;
     }
-    var pay = state.lovs.payment_terms || [];
-    var inco = state.lovs.incoterms || [];
     var pods = state.lovs.port_of_destination || [];
-    var fwds = state.forwarders || [];
 
     root.innerHTML = state.customers.map(function (c, i) {
       var prodChips = state.products.map(function (p) {
@@ -798,29 +795,8 @@
         '<label class="field">Default port of destination<select data-cf="defaultPortOfDestination">' +
         '<option value="">—</option>' + optionHtml(pods, c.defaultPortOfDestination) +
         "</select></label>" +
-        '<label class="field">Payment terms<select data-cf="defaultPaymentTerms">' +
-        '<option value="">—</option>' + optionHtml(pay, c.defaultPaymentTerms) +
-        "</select></label>" +
-        '<label class="field">Incoterms<select data-cf="defaultIncoterms">' +
-        '<option value="">—</option>' + optionHtml(inco, c.defaultIncoterms) +
-        "</select></label>" +
-        '<label class="field">Default forwarder<select data-cf="defaultForwarderId">' +
-        '<option value="">—</option>' + optionHtml(fwds, c.defaultForwarderId, function (x) { return x.name; }) +
-        "</select></label>" +
-        '<label class="field">BL path<select data-cf="blPath">' +
-        '<option value="manual"' + (c.blPath === "manual" ? " selected" : "") + ">manual</option>" +
-        '<option value="portal"' + (c.blPath === "portal" ? " selected" : "") + ">portal</option>" +
-        "</select></label>" +
-        '<label class="field">ISF required<select data-cf="isfRequired">' +
-        '<option value="false"' + (c.isfRequired ? "" : " selected") + ">FALSE</option>" +
-        '<option value="true"' + (c.isfRequired ? " selected" : "") + ">TRUE</option>" +
-        "</select></label>" +
         '<label class="field full">Default document pack<span class="why">e.g. bill_of_lading | packing_list | e_coo | customer_invoice</span>' +
         '<input data-cf="defaultDocumentPack" value="' + esc(c.defaultDocumentPack || "") + '" /></label>' +
-        '<label class="field">Ship-to name<input data-cf="shipToName" value="' + esc(c.shipToName || "") + '" /></label>' +
-        '<label class="field">Ship-to address<input data-cf="shipToAddress" value="' + esc(c.shipToAddress || "") + '" /></label>' +
-        '<label class="field">Consignee name<input data-cf="consigneeName" value="' + esc(c.consigneeName || "") + '" /></label>' +
-        '<label class="field">Consignee address<input data-cf="consigneeAddress" value="' + esc(c.consigneeAddress || "") + '" /></label>' +
         "</div>" +
         '<label class="field" style="margin-top:12px">Products this customer buys</label>' +
         '<div class="chip-grid">' + prodChips + "</div>" +
@@ -843,8 +819,7 @@
         var handler = function () {
           var f = el.getAttribute("data-cf");
           var v = el.value;
-          if (f === "isfRequired") c.isfRequired = v === "true";
-          else c[f] = v;
+          c[f] = v;
           if (f === "name") {
             var t = $("header strong", card);
             if (t) t.textContent = v || "Untitled customer";
@@ -1047,16 +1022,7 @@
         contact_email_2: c.contactEmail2 || "",
         default_port_of_destination: c.defaultPortOfDestination,
         fda_registration_no: c.fdaRegistrationNo || "",
-        default_payment_terms: c.defaultPaymentTerms,
-        default_incoterms: c.defaultIncoterms,
-        default_forwarder_id: c.defaultForwarderId,
-        bl_path: c.blPath,
-        isf_required: c.isfRequired ? "TRUE" : "FALSE",
         default_document_pack: c.defaultDocumentPack || "",
-        ship_to_name: c.shipToName || "",
-        ship_to_address: c.shipToAddress || "",
-        consignee_name: c.consigneeName || "",
-        consignee_address: c.consigneeAddress || "",
         product_skus: (c.productSkus || []).join("|")
       };
     }));
@@ -1149,16 +1115,7 @@
         contactEmail2: "",
         fdaRegistrationNo: "",
         defaultPortOfDestination: "",
-        defaultPaymentTerms: "",
-        defaultIncoterms: "",
-        defaultForwarderId: "",
-        blPath: "manual",
-        isfRequired: false,
         defaultDocumentPack: "",
-        shipToName: "",
-        shipToAddress: "",
-        consigneeName: "",
-        consigneeAddress: "",
         productSkus: [],
         productPackaging: {}
       });
