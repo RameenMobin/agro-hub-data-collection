@@ -168,6 +168,15 @@
       color: var(--muted); font-size: 13.5px; padding: 12px;
       border: 1px dashed var(--line); border-radius: 8px; text-align: center;
     }
+    .add-inline {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px;
+      margin-top: 8px; align-items: center;
+    }
+    .add-inline input { width: 100%; }
+    .add-inline.stack { grid-template-columns: 1fr 1fr auto; }
+    @media (max-width: 700px) {
+      .add-inline.stack { grid-template-columns: 1fr; }
+    }
     .warn-box {
       background: var(--warn-soft); border-left: 3px solid var(--warn);
       padding: 10px 12px; border-radius: 0 8px 8px 0; font-size: 13px; margin: 0 0 12px;
@@ -233,7 +242,7 @@
     <!-- 2 LOVS -->
     <section class="panel" id="panel-lovs" data-panel="lovs">
       <h2>2. Dropdown lists (LOVs)</h2>
-      <p class="hint">Enter only the values people should see in the dropdown (e.g. “Net 30”, “Karachi Port”). No codes or keys. Consignee comes from Customers. Carriers / vessels grow later from CRO / BL.</p>
+      <p class="hint">Enter values people should see (e.g. “Net 30”). No codes. You can also add ports / packaging / UoM / products later from the Customer or Product cards — new values appear here automatically.</p>
       <div id="lovsRoot"></div>
       <div class="nav-footer">
         <button type="button" class="sec" data-next="company">← Company</button>
@@ -257,7 +266,7 @@
     <!-- 4 CUSTOMERS -->
     <section class="panel" id="panel-customers" data-panel="customers">
       <h2>4. Customers</h2>
-      <p class="hint">Pick products from your catalog. Packaging for each selected product shows automatically. Optionally untick packs this customer never uses.</p>
+      <p class="hint">Pick products from your catalog (or add a product here). Packaging appears from the product — you can add a new port or packaging type here and it updates the Dropdown lists.</p>
       <div id="customersList"></div>
       <button type="button" class="sec" id="addCustomer">+ Add customer</button>
       <div class="nav-footer">
@@ -463,6 +472,7 @@
       if (btn) btn.setAttribute("aria-selected", on ? "true" : "false");
       if (panel) panel.classList.toggle("active", on);
     });
+    if (id === "lovs") renderLovs();
     if (id === "products") renderProducts();
     if (id === "customers") renderCustomers();
     if (id === "samples") renderSamples();
@@ -613,6 +623,22 @@
     return normalizeLovList(state.lovs.uom);
   }
 
+  /** Add a display value to an LOV list if missing; returns trimmed value or "". */
+  function ensureLov(key, raw) {
+    var val = String(raw || "").trim();
+    if (!val) return "";
+    state.lovs[key] = normalizeLovList(state.lovs[key] || []);
+    var exists = state.lovs[key].some(function (v) {
+      return v.toLowerCase() === val.toLowerCase();
+    });
+    if (!exists) state.lovs[key].push(val);
+    else {
+      // Prefer existing casing
+      val = state.lovs[key].find(function (v) { return v.toLowerCase() === val.toLowerCase(); }) || val;
+    }
+    return val;
+  }
+
   function labelForPack(value) {
     return value || "";
   }
@@ -641,7 +667,7 @@
   function renderProducts() {
     var packs = packagingOptions();
     var uoms = uomOptions();
-    $("#packWarn").hidden = packs.length > 0 && uoms.length > 0;
+    $("#packWarn").hidden = true; // can add packaging / UoM inline on each product
     var root = $("#productsList");
     if (!state.products.length) {
       root.innerHTML = '<div class="empty">No products yet — add your catalog here first</div>';
@@ -660,11 +686,14 @@
         '<label class="field full">Notes<input data-pf="notes" value="' + esc(p.notes || "") + '" /></label>' +
         '</div>' +
         '<label class="field" style="margin-top:10px">Unit of measurement' +
-        '<span class="why">Multi-select from Dropdowns → Units of measurement</span></label>' +
+        '<span class="why">Multi-select from LOV — or add a new value below (it joins the UoM dropdown list)</span></label>' +
         '<div class="chip-grid">' + chipGrid(uoms, productUoms(p), "uom") + "</div>" +
+        '<div class="add-inline"><input data-new-uom placeholder="Add new UoM (e.g. MT)" /><button type="button" class="sec" data-add-uom>Add</button></div>' +
         '<label class="field" style="margin-top:10px">Packaging types for this product' +
-        '<span class="why">Select all that apply — customers will see these when they pick this product</span></label>' +
-        '<div class="chip-grid">' + chipGrid(packs, productPacks(p), "pack") + "</div></div>";
+        '<span class="why">Select all that apply — or add a new type (it joins the Packaging LOV)</span></label>' +
+        '<div class="chip-grid">' + chipGrid(packs, productPacks(p), "pack") + "</div>" +
+        '<div class="add-inline"><input data-new-pack placeholder="Add new packaging (e.g. 10 kg bags)" /><button type="button" class="sec" data-add-pack>Add</button></div>' +
+        "</div>";
     }).join("");
 
     $all("[data-del-prod]", root).forEach(function (btn) {
@@ -721,6 +750,31 @@
       }
       bindMulti("pack", "packaging", function (p) { delete p.packagingCodes; });
       bindMulti("uom", "uoms", function (p) { delete p.uom; });
+
+      var addPackBtn = $("[data-add-pack]", card);
+      var addUomBtn = $("[data-add-uom]", card);
+      if (addPackBtn) {
+        addPackBtn.addEventListener("click", function () {
+          var inp = $("[data-new-pack]", card);
+          var val = ensureLov("packaging", inp && inp.value);
+          if (!val) return;
+          var list = state.products[i].packaging || (state.products[i].packaging = []);
+          if (list.indexOf(val) < 0) list.push(val);
+          delete state.products[i].packagingCodes;
+          renderProducts(); scheduleSave();
+        });
+      }
+      if (addUomBtn) {
+        addUomBtn.addEventListener("click", function () {
+          var inp = $("[data-new-uom]", card);
+          var val = ensureLov("uom", inp && inp.value);
+          if (!val) return;
+          var list = state.products[i].uoms || (state.products[i].uoms = []);
+          if (list.indexOf(val) < 0) list.push(val);
+          delete state.products[i].uom;
+          renderProducts(); scheduleSave();
+        });
+      }
     });
   }
 
@@ -758,22 +812,22 @@
         var prod = state.products.find(function (p) { return p.sku === sku; });
         if (!prod) return "";
         var allowed = productPacks(prod);
-        if (!allowed.length) {
-          return '<div style="margin-top:8px"><strong style="font-size:12px;color:var(--ink)">' +
-            esc(prod.name || sku) + '</strong><div class="meta">No packaging on this product yet</div></div>';
-        }
         var restricted = c.productPackaging && c.productPackaging[sku];
         var selected = restricted || allowed.slice();
-        var chips = allowed.map(function (val) {
-          var on = selected.indexOf(val) >= 0;
-          return '<label class="chip' + (on ? " on" : "") + '">' +
-            '<input type="checkbox" data-cpack-sku="' + esc(sku) + '" data-cpack="' + esc(val) + '"' +
-            (on ? " checked" : "") + " />" + esc(val) + "</label>";
-        }).join("");
-        return '<div style="margin-top:10px">' +
+        var chips = allowed.length
+          ? allowed.map(function (val) {
+              var on = selected.indexOf(val) >= 0;
+              return '<label class="chip' + (on ? " on" : "") + '">' +
+                '<input type="checkbox" data-cpack-sku="' + esc(sku) + '" data-cpack="' + esc(val) + '"' +
+                (on ? " checked" : "") + " />" + esc(val) + "</label>";
+            }).join("")
+          : '<span class="meta">No packaging on this product yet — add below</span>';
+        return '<div style="margin-top:10px" data-cust-pack-sku="' + esc(sku) + '">' +
           '<label class="field">Packaging for <em>' + esc(prod.name || sku) + '</em>' +
-          '<span class="why">All product packs shown. Untick any this customer never uses.</span></label>' +
-          '<div class="chip-grid">' + chips + "</div></div>";
+          '<span class="why">Untick packs this customer never uses. Add a new type to update the Packaging LOV + this product.</span></label>' +
+          '<div class="chip-grid">' + chips + "</div>" +
+          '<div class="add-inline"><input data-new-cpack placeholder="Add packaging for this product" />' +
+          '<button type="button" class="sec" data-add-cpack="' + esc(sku) + '">Add</button></div></div>';
       }).join("");
 
       return '<div class="row-card" data-cust-i="' + i + '">' +
@@ -798,8 +852,15 @@
         '<label class="field full">Default document pack<span class="why">e.g. bill_of_lading | packing_list | e_coo | customer_invoice</span>' +
         '<input data-cf="defaultDocumentPack" value="' + esc(c.defaultDocumentPack || "") + '" /></label>' +
         "</div>" +
+        '<div class="add-inline" style="margin-top:8px">' +
+        '<input data-new-pod placeholder="Or add a new port of destination" />' +
+        '<button type="button" class="sec" data-add-pod>Add port</button></div>' +
         '<label class="field" style="margin-top:12px">Products this customer buys</label>' +
         '<div class="chip-grid">' + prodChips + "</div>" +
+        '<div class="add-inline stack" style="margin-top:8px">' +
+        '<input data-new-prod-name placeholder="New product name" />' +
+        '<input data-new-prod-hs placeholder="HS code (optional)" />' +
+        '<button type="button" class="sec" data-add-prod>Add product</button></div>' +
         packBlocks +
         "</div>";
     }).join("");
@@ -861,6 +922,59 @@
           else c.productPackaging[sku] = cur;
           cb.closest(".chip").classList.toggle("on", cb.checked);
           scheduleSave();
+        });
+      });
+
+      var addPodBtn = $("[data-add-pod]", card);
+      if (addPodBtn) {
+        addPodBtn.addEventListener("click", function () {
+          var inp = $("[data-new-pod]", card);
+          var val = ensureLov("port_of_destination", inp && inp.value);
+          if (!val) return;
+          c.defaultPortOfDestination = val;
+          renderCustomers(); scheduleSave();
+        });
+      }
+
+      var addProdBtn = $("[data-add-prod]", card);
+      if (addProdBtn) {
+        addProdBtn.addEventListener("click", function () {
+          var nameInp = $("[data-new-prod-name]", card);
+          var hsInp = $("[data-new-prod-hs]", card);
+          var name = String((nameInp && nameInp.value) || "").trim();
+          if (!name) return;
+          var sku = uid("sku").toUpperCase().replace("SKU-", "AH-");
+          state.products.push({
+            sku: sku,
+            name: name,
+            hsCode: String((hsInp && hsInp.value) || "").trim(),
+            uoms: [],
+            packaging: [],
+            notes: ""
+          });
+          c.productSkus = c.productSkus || [];
+          if (c.productSkus.indexOf(sku) < 0) c.productSkus.push(sku);
+          renderCustomers(); scheduleSave();
+        });
+      }
+
+      $all("[data-add-cpack]", card).forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var sku = btn.getAttribute("data-add-cpack");
+          var wrap = btn.closest("[data-cust-pack-sku]");
+          var inp = wrap && $("[data-new-cpack]", wrap);
+          var val = ensureLov("packaging", inp && inp.value);
+          if (!val) return;
+          var prod = state.products.find(function (p) { return p.sku === sku; });
+          if (!prod) return;
+          prod.packaging = productPacks(prod);
+          if (prod.packaging.indexOf(val) < 0) prod.packaging.push(val);
+          delete prod.packagingCodes;
+          // Keep customer restriction in sync if they had narrowed packs
+          if (c.productPackaging && c.productPackaging[sku]) {
+            if (c.productPackaging[sku].indexOf(val) < 0) c.productPackaging[sku].push(val);
+          }
+          renderCustomers(); scheduleSave();
         });
       });
     });
