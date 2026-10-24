@@ -43,12 +43,13 @@ folder is configured as the root directory.
   "lovs": {
     "payment_terms": ["Net 30", "CAD"],
     "packaging": ["25 kg bags", "Bulk (kg)"],
-    "uom": ["KG", "bag", "LB", "MT"]
+    "uom": ["KG", "bag", "LB", "MT"],
+    "hs_codes": ["2501.0090", "1006.30"]
   },
   "products": [{
     "sku": "",
     "name": "",
-    "hsCode": "",
+    "hsCodes": ["2501.0090"],
     "uoms": ["KG", "bag"],
     "packaging": ["25 kg bags", "Bulk (kg)"]
   }],

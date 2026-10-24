@@ -242,7 +242,7 @@
     <!-- 2 LOVS -->
     <section class="panel" id="panel-lovs" data-panel="lovs">
       <h2>2. Dropdown lists (LOVs)</h2>
-      <p class="hint">Enter values people should see (e.g. “Net 30”). No codes. You can also add ports / packaging / UoM / products later from the Customer or Product cards — new values appear here automatically.</p>
+      <p class="hint">Enter values people should see (e.g. “Net 30”, HS codes your products use). You can also add ports / packaging / UoM / HS codes / products from the Customer or Product cards — new values appear here automatically.</p>
       <div id="lovsRoot"></div>
       <div class="nav-footer">
         <button type="button" class="sec" data-next="company">← Company</button>
@@ -377,6 +377,7 @@
         port_of_destination: ["JACKSONVILLE, U.S.A.", "NEW YORK, U.S.A."],
         packaging: ["25 kg bags", "50 kg bags", "Bulk (kg)"],
         uom: ["KG", "bag", "LB", "MT"],
+        hs_codes: ["2501.0090", "1006.30", "1006.40"],
         pallet_type: ["Wooden pallets", "Plastic / other"]
       },
       products: [],
@@ -434,9 +435,14 @@
         state.products = (parsed.products || []).map(function (p) {
           var uoms = p.uoms != null ? p.uoms : p.uom;
           if (typeof uoms === "string") uoms = uoms ? [uoms] : [];
+          var hs = p.hsCodes != null ? p.hsCodes : p.hsCode;
+          if (typeof hs === "string") hs = hs ? [hs] : [];
+          var hsList = normalizePackList(hs || []);
+          hsList.forEach(function (code) { ensureLov("hs_codes", code); });
           return Object.assign({}, p, {
             packaging: normalizePackList(p.packaging || p.packagingCodes || []),
-            uoms: normalizePackList(uoms || [])
+            uoms: normalizePackList(uoms || []),
+            hsCodes: hsList
           });
         });
         state.customers = (parsed.customers || []).map(function (c) {
@@ -569,6 +575,7 @@
     { key: "port_of_destination", title: "Ports of destination" },
     { key: "packaging", title: "Packaging types" },
     { key: "uom", title: "Units of measurement" },
+    { key: "hs_codes", title: "HS / HTS codes" },
     { key: "pallet_type", title: "Pallet types" }
   ];
 
@@ -623,6 +630,10 @@
     return normalizeLovList(state.lovs.uom);
   }
 
+  function hsOptions() {
+    return normalizeLovList(state.lovs.hs_codes);
+  }
+
   /** Add a display value to an LOV list if missing; returns trimmed value or "". */
   function ensureLov(key, raw) {
     var val = String(raw || "").trim();
@@ -653,6 +664,12 @@
     return normalizePackList(u || []);
   }
 
+  function productHs(p) {
+    var h = p.hsCodes != null ? p.hsCodes : p.hsCode;
+    if (typeof h === "string") return h ? [h] : [];
+    return normalizePackList(h || []);
+  }
+
   function chipGrid(options, selected, dataAttr) {
     if (!options.length) return '<span class="meta">Add values under Dropdowns first</span>';
     return options.map(function (val) {
@@ -667,25 +684,30 @@
   function renderProducts() {
     var packs = packagingOptions();
     var uoms = uomOptions();
-    $("#packWarn").hidden = true; // can add packaging / UoM inline on each product
+    var hsList = hsOptions();
+    $("#packWarn").hidden = true;
     var root = $("#productsList");
     if (!state.products.length) {
       root.innerHTML = '<div class="empty">No products yet — add your catalog here first</div>';
       return;
     }
     root.innerHTML = state.products.map(function (p, i) {
+      var hsSel = productHs(p);
       return '<div class="row-card" data-prod-i="' + i + '">' +
         '<header><div><strong>' + esc(p.name || "Untitled product") + '</strong>' +
         '<div class="meta">' + esc(p.sku || "no sku") +
-        (p.hsCode ? " · HS " + esc(p.hsCode) : "") + "</div></div>" +
+        (hsSel.length ? " · HS " + esc(hsSel.join(", ")) : "") + "</div></div>" +
         '<button type="button" class="danger" data-del-prod="' + i + '">Remove</button></header>' +
         '<div class="grid">' +
         '<label class="field">SKU / id<span class="why">from your current systems</span>' +
         '<input data-pf="sku" value="' + esc(p.sku) + '" /></label>' +
-        '<label class="field">HS code<input data-pf="hsCode" value="' + esc(p.hsCode) + '" /></label>' +
         '<label class="field full">Product name / description<input data-pf="name" value="' + esc(p.name) + '" /></label>' +
         '<label class="field full">Notes<input data-pf="notes" value="' + esc(p.notes || "") + '" /></label>' +
         '</div>' +
+        '<label class="field" style="margin-top:10px">HS / HTS codes' +
+        '<span class="why">Select all codes relevant to this product — or add a new code (it joins the HS codes LOV)</span></label>' +
+        '<div class="chip-grid">' + chipGrid(hsList, hsSel, "hs") + "</div>" +
+        '<div class="add-inline"><input data-new-hs placeholder="Add HS code (e.g. 2501.0090)" /><button type="button" class="sec" data-add-hs>Add</button></div>' +
         '<label class="field" style="margin-top:10px">Unit of measurement' +
         '<span class="why">Multi-select from LOV — or add a new value below (it joins the UoM dropdown list)</span></label>' +
         '<div class="chip-grid">' + chipGrid(uoms, productUoms(p), "uom") + "</div>" +
@@ -751,31 +773,24 @@
       }
       bindMulti("pack", "packaging", function (p) { delete p.packagingCodes; });
       bindMulti("uom", "uoms", function (p) { delete p.uom; });
+      bindMulti("hs", "hsCodes", function (p) { delete p.hsCode; });
 
-      var addPackBtn = $("[data-add-pack]", card);
-      var addUomBtn = $("[data-add-uom]", card);
-      if (addPackBtn) {
-        addPackBtn.addEventListener("click", function () {
-          var inp = $("[data-new-pack]", card);
-          var val = ensureLov("packaging", inp && inp.value);
+      function bindAdd(btnSel, inpSel, lovKey, field, cleanup) {
+        var btn = $(btnSel, card);
+        if (!btn) return;
+        btn.addEventListener("click", function () {
+          var inp = $(inpSel, card);
+          var val = ensureLov(lovKey, inp && inp.value);
           if (!val) return;
-          var list = state.products[i].packaging || (state.products[i].packaging = []);
+          var list = state.products[i][field] || (state.products[i][field] = []);
           if (list.indexOf(val) < 0) list.push(val);
-          delete state.products[i].packagingCodes;
+          if (cleanup) cleanup(state.products[i]);
           renderProducts(); scheduleSave();
         });
       }
-      if (addUomBtn) {
-        addUomBtn.addEventListener("click", function () {
-          var inp = $("[data-new-uom]", card);
-          var val = ensureLov("uom", inp && inp.value);
-          if (!val) return;
-          var list = state.products[i].uoms || (state.products[i].uoms = []);
-          if (list.indexOf(val) < 0) list.push(val);
-          delete state.products[i].uom;
-          renderProducts(); scheduleSave();
-        });
-      }
+      bindAdd("[data-add-pack]", "[data-new-pack]", "packaging", "packaging", function (p) { delete p.packagingCodes; });
+      bindAdd("[data-add-uom]", "[data-new-uom]", "uom", "uoms", function (p) { delete p.uom; });
+      bindAdd("[data-add-hs]", "[data-new-hs]", "hs_codes", "hsCodes", function (p) { delete p.hsCode; });
     });
   }
 
@@ -859,9 +874,8 @@
         '<button type="button" class="sec" data-add-pod>Add port</button></div>' +
         '<label class="field" style="margin-top:12px">Products this customer buys</label>' +
         '<div class="chip-grid">' + prodChips + "</div>" +
-        '<div class="add-inline stack" style="margin-top:8px">' +
+        '<div class="add-inline" style="margin-top:8px">' +
         '<input data-new-prod-name placeholder="New product name" />' +
-        '<input data-new-prod-hs placeholder="HS code (optional)" />' +
         '<button type="button" class="sec" data-add-prod>Add product</button></div>' +
         packBlocks +
         "</div>";
@@ -942,14 +956,13 @@
       if (addProdBtn) {
         addProdBtn.addEventListener("click", function () {
           var nameInp = $("[data-new-prod-name]", card);
-          var hsInp = $("[data-new-prod-hs]", card);
           var name = String((nameInp && nameInp.value) || "").trim();
           if (!name) return;
           var sku = uid("sku").toUpperCase().replace("SKU-", "AH-");
           state.products.push({
             sku: sku,
             name: name,
-            hsCode: String((hsInp && hsInp.value) || "").trim(),
+            hsCodes: [],
             uoms: [],
             packaging: [],
             notes: ""
@@ -1110,7 +1123,7 @@
       return {
         sku: p.sku,
         product_name_description: p.name,
-        hs_code: p.hsCode,
+        hs_codes: productHs(p).join(" | "),
         units_of_measurement: productUoms(p).join(" | "),
         packaging_types: packs.join(" | "),
         notes: p.notes || ""
@@ -1213,7 +1226,7 @@
       state.products.push({
         sku: uid("sku").toUpperCase().replace("SKU-", "AH-"),
         name: "",
-        hsCode: "",
+        hsCodes: [],
         uoms: [],
         packaging: [],
         notes: ""
