@@ -146,25 +146,11 @@
     .msel-toggle .ph { color: var(--muted); font-size: 12.5px; }
     .msel-tags { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
     .msel-tag {
-      display: inline-flex; align-items: center; gap: 2px;
+      display: inline-flex; align-items: center;
       background: #eefbfc; border: 1px solid #b7e6ec; color: var(--ink);
-      border-radius: 999px; padding: 0 4px 0 7px; font-size: 11px; max-width: 100%;
+      border-radius: 999px; padding: 0 8px; font-size: 11px; max-width: 100%;
       height: 20px; line-height: 20px; white-space: nowrap;
     }
-    /* Reset global `button { padding… }` so remove × stays inside the pill */
-    .msel-tag button,
-    .msel-tag button.danger,
-    button.msel-x {
-      appearance: none;
-      display: inline-flex; align-items: center; justify-content: center;
-      border: 0 !important; background: transparent !important;
-      color: var(--muted) !important;
-      padding: 0 !important; margin: 0;
-      width: 16px; height: 16px; min-width: 16px;
-      font-size: 14px; font-weight: 500; line-height: 1;
-      border-radius: 50%; cursor: pointer; box-shadow: none;
-    }
-    .msel-tag button:hover { color: var(--ink) !important; background: rgba(0,0,0,0.06) !important; }
     .msel-panel {
       display: none; position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 3px);
       background: #fff; border: 1px solid var(--line); border-radius: 8px;
@@ -827,8 +813,7 @@
   function mselToggleHtml(selected, placeholder) {
     if (!selected.length) return '<span class="ph">' + esc(placeholder || "Select…") + "</span>";
     return '<span class="msel-tags">' + selected.map(function (v) {
-      return '<span class="msel-tag"><span class="msel-tag-label">' + esc(v) + "</span>" +
-        '<button type="button" class="msel-x" data-msel-remove="' + esc(v) + '" aria-label="Remove">×</button></span>';
+      return '<span class="msel-tag">' + esc(v) + "</span>";
     }).join("") + "</span>";
   }
 
@@ -841,22 +826,6 @@
     function refreshToggle() {
       if (!toggle) return;
       toggle.innerHTML = mselToggleHtml(getList(), placeholder);
-      $all("[data-msel-remove]", toggle).forEach(function (btn) {
-        btn.addEventListener("click", onRemove);
-      });
-    }
-
-    function onRemove(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      var val = e.currentTarget.getAttribute("data-msel-remove");
-      setList(getList().filter(function (v) { return v !== val; }));
-      $all("[data-msel-opt]", root).forEach(function (el) {
-        if (el.getAttribute("data-msel-opt") === val) el.checked = false;
-      });
-      scheduleSave();
-      if (onChangeRerender) onChangeRerender();
-      else refreshToggle();
     }
 
     function open() {
@@ -868,13 +837,9 @@
 
     if (toggle) {
       toggle.addEventListener("click", function (e) {
-        if (e.target && e.target.closest && e.target.closest("[data-msel-remove]")) return;
         e.preventDefault();
         if (root.classList.contains("open")) root.classList.remove("open");
         else open();
-      });
-      $all("[data-msel-remove]", toggle).forEach(function (btn) {
-        btn.addEventListener("click", onRemove);
       });
     }
 
@@ -1073,7 +1038,7 @@
         '<label class="field">Phone 2<input data-cf="contactPhone2" value="' + esc(c.contactPhone2 || "") + '" /></label>' +
         '<label class="field">Email 2<input data-cf="contactEmail2" value="' + esc(c.contactEmail2 || "") + '" /></label>' +
         '<label class="field">FDA registration (importer)<input data-cf="fdaRegistrationNo" value="' + esc(c.fdaRegistrationNo || "") + '" /></label>' +
-        '<label class="field full">Default port of destination' +
+        '<label class="field">Default port of destination' +
         multiSelectHtml(
           normalizeLovList(pods),
           customerPorts(c),
@@ -1082,7 +1047,7 @@
           "Add port"
         ) +
         "</label>" +
-        '<label class="field full">Products this customer buys' +
+        '<label class="field">Products this customer buys' +
         multiSelectHtml(prodOpts, selectedNames, "cprods", "Select products…", "Type new product name") +
         "</label>" +
         packBlocks +
