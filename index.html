@@ -146,6 +146,35 @@
       .contact-row { grid-template-columns: 1fr auto; }
       .contact-row .field { grid-column: 1 / -1; }
     }
+    .csel { position: relative; }
+    .csel-input {
+      width: 100%; font: inherit; font-weight: 400; color: var(--body);
+      border: 1px solid var(--line); border-radius: 6px;
+      padding: 5px 28px 5px 8px; background: #fff; height: 32px;
+    }
+    .csel-input:focus {
+      outline: 2px solid rgba(54, 187, 201, 0.35); border-color: var(--cyan);
+    }
+    .csel::after {
+      content: ""; position: absolute; right: 10px; top: 50%;
+      width: 5px; height: 5px; border-right: 1.5px solid var(--muted);
+      border-bottom: 1.5px solid var(--muted); transform: translateY(-60%) rotate(45deg);
+      pointer-events: none;
+    }
+    .csel-panel {
+      display: none; position: absolute; z-index: 45; left: 0; right: 0; top: calc(100% + 3px);
+      background: #fff; border: 1px solid var(--line); border-radius: 8px;
+      box-shadow: 0 10px 28px rgba(7, 35, 56, 0.12); max-height: 220px; overflow: auto;
+      padding: 4px;
+    }
+    .csel.open .csel-panel { display: block; }
+    .csel-opt {
+      display: block; width: 100%; text-align: left; border: 0; background: transparent;
+      padding: 5px 8px; border-radius: 5px; font: inherit; font-size: 12.5px; font-weight: 400;
+      color: var(--body); cursor: pointer;
+    }
+    .csel-opt:hover, .csel-opt.active { background: var(--soft); }
+    .csel-empty { padding: 8px; font-size: 12px; color: var(--muted); }
     .msel { position: relative; margin-top: 0; }
     .msel-toggle {
       width: 100%; text-align: left; font: inherit; font-weight: 400;
@@ -387,6 +416,33 @@
 
   var STORAGE_KEY = "agro-hub-masters-v2";
   var STEPS = ["company", "lovs", "products", "customers", "forwarders", "samples"];
+
+  // English short names (ISO 3166-ish) for searchable country pickers
+  var COUNTRIES = [
+    "Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia",
+    "Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium",
+    "Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria",
+    "Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad",
+    "Chile","China","Colombia","Comoros","Congo","Congo (Democratic Republic)","Costa Rica","Côte d'Ivoire",
+    "Croatia","Cuba","Cyprus","Czechia","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador",
+    "Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland",
+    "France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea",
+    "Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq",
+    "Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kuwait",
+    "Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania",
+    "Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania",
+    "Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique",
+    "Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria",
+    "North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama",
+    "Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia",
+    "Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino",
+    "Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore",
+    "Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain",
+    "Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania",
+    "Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan",
+    "Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay",
+    "Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"
+  ];
 
   var DOC_SAMPLES = [
     { id: "pi", label: "Proforma invoice (final)" },
@@ -793,6 +849,99 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function countrySelectHtml(value, key) {
+    return '<div class="csel" data-csel="' + esc(key) + '">' +
+      '<input class="csel-input" type="text" autocomplete="off" spellcheck="false" ' +
+      'placeholder="Search country…" value="' + esc(value || "") + '" data-csel-input />' +
+      '<div class="csel-panel" data-csel-panel></div></div>';
+  }
+
+  function bindCountrySelect(root, key, getValue, setValue) {
+    var wrap = root.querySelector('[data-csel="' + key + '"]');
+    if (!wrap) return;
+    var inp = $("[data-csel-input]", wrap);
+    var panel = $("[data-csel-panel]", wrap);
+    if (!inp || !panel) return;
+
+    function renderOpts(q) {
+      var query = String(q || "").trim().toLowerCase();
+      var list = COUNTRIES.filter(function (c) {
+        return !query || c.toLowerCase().indexOf(query) >= 0;
+      });
+      if (!list.length) {
+        panel.innerHTML = '<div class="csel-empty">No match — keep typing or clear to browse</div>';
+        return;
+      }
+      panel.innerHTML = list.slice(0, 80).map(function (c) {
+        var on = c === getValue();
+        return '<button type="button" class="csel-opt' + (on ? " active" : "") + '" data-csel-opt="' +
+          esc(c) + '">' + esc(c) + "</button>";
+      }).join("");
+      $all("[data-csel-opt]", panel).forEach(function (btn) {
+        btn.addEventListener("mousedown", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var val = btn.getAttribute("data-csel-opt");
+          setValue(val);
+          inp.value = val;
+          wrap.classList.remove("open");
+          scheduleSave();
+        });
+      });
+    }
+
+    function open() {
+      $all(".csel.open").forEach(function (el) {
+        if (el !== wrap) el.classList.remove("open");
+      });
+      $all(".msel.open").forEach(function (el) { el.classList.remove("open"); });
+      wrap.classList.add("open");
+      renderOpts(inp.value);
+    }
+
+    inp.addEventListener("focus", open);
+    inp.addEventListener("click", open);
+    inp.addEventListener("input", function () {
+      // Allow free-text while searching; commit exact country on pick / blur match
+      setValue(inp.value);
+      scheduleSave();
+      open();
+      renderOpts(inp.value);
+    });
+    inp.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") {
+        wrap.classList.remove("open");
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        var first = $("[data-csel-opt]", panel);
+        if (first) {
+          var val = first.getAttribute("data-csel-opt");
+          setValue(val);
+          inp.value = val;
+          wrap.classList.remove("open");
+          scheduleSave();
+        }
+      }
+    });
+    inp.addEventListener("blur", function () {
+      // Snap to closest country if exact (case-insensitive) match exists
+      var typed = String(inp.value || "").trim();
+      if (!typed) {
+        setValue("");
+        scheduleSave();
+        return;
+      }
+      var hit = COUNTRIES.find(function (c) { return c.toLowerCase() === typed.toLowerCase(); });
+      if (hit) {
+        setValue(hit);
+        inp.value = hit;
+        scheduleSave();
+      }
+    });
+  }
+
   /* ---------- Company ---------- */
   function renderCompany() {
     var c = state.company;
@@ -803,7 +952,6 @@
       ["addressLine2", "Address line 2", false],
       ["city", "City", false],
       ["postalCode", "Postal / zip", false],
-      ["country", "Country", false],
       ["fdaRegistrationNo", "FDA registration no.", false],
       ["ntn", "NTN", false]
     ];
@@ -811,7 +959,9 @@
       var full = f[0] === "addressLine1" || f[0] === "addressLine2" ? " full" : "";
       return '<label class="field' + full + '">' + f[1] +
         '<input data-company="' + f[0] + '" value="' + esc(c[f[0]] || "") + '" /></label>';
-    }).join("") + contactsBlockHtml(c.contacts, "company");
+    }).join("") +
+      '<label class="field">Country' + countrySelectHtml(c.country || "", "company-country") + "</label>" +
+      contactsBlockHtml(c.contacts, "company");
     $("#companyForm").innerHTML = html;
     $all("[data-company]").forEach(function (inp) {
       inp.addEventListener("input", function () {
@@ -819,6 +969,9 @@
         scheduleSave();
       });
     });
+    bindCountrySelect($("#companyForm"), "company-country",
+      function () { return state.company.country || ""; },
+      function (v) { state.company.country = v; });
     bindContacts($("#companyForm"),
       function () { return state.company.contacts; },
       function (list) { state.company.contacts = list; },
@@ -1379,7 +1532,7 @@
         '<label class="field full">Street<input data-cf="addressStreet" value="' + esc(c.addressStreet) + '" /></label>' +
         '<label class="field">City<input data-cf="addressCity" value="' + esc(c.addressCity) + '" /></label>' +
         '<label class="field">Postal / zip<input data-cf="addressPostalCode" value="' + esc(c.addressPostalCode) + '" /></label>' +
-        '<label class="field">Country<input data-cf="addressCountry" value="' + esc(c.addressCountry) + '" /></label>' +
+        '<label class="field">Country' + countrySelectHtml(c.addressCountry || "", "cust-country-" + i) + "</label>" +
         '<label class="field">FDA registration (importer)<input data-cf="fdaRegistrationNo" value="' + esc(c.fdaRegistrationNo || "") + '" /></label>' +
         contactsBlockHtml(c.contacts, "cust-" + i) +
         '<label class="field">Default port of destination' +
@@ -1428,6 +1581,10 @@
         function () { return c.contacts; },
         function (list) { c.contacts = list; },
         renderCustomers);
+
+      bindCountrySelect(card, "cust-country-" + i,
+        function () { return c.addressCountry || ""; },
+        function (v) { c.addressCountry = v; });
 
       bindMultiSelect(card, "cpods",
         function () { return customerPorts(c); },
@@ -1757,6 +1914,8 @@
     document.addEventListener("mousedown", function (e) {
       if (e.target && e.target.closest && e.target.closest(".msel")) return;
       $all(".msel.open").forEach(function (el) { el.classList.remove("open"); });
+      if (e.target && e.target.closest && e.target.closest(".csel")) return;
+      $all(".csel.open").forEach(function (el) { el.classList.remove("open"); });
     });
 
     $all(".steps button").forEach(function (btn) {
