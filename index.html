@@ -3,65 +3,53 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Agro Hub × TraceRoot — Export data collection</title>
+  <title>Agro Hub × TraceRoot — Master data</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Inter+Tight:wght@400;500;600&family=Jost:wght@600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
   <style>
     :root {
-      --ink: #072338;
-      --body: #2c4257;
-      --muted: #6a8199;
-      --line: #dde5ee;
-      --navy: #0F477B;
-      --blue: #1170E0;
-      --cyan: #36BBC9;
-      --soft: #f3f7fb;
-      --page: #eef3f8;
-      --card: #fff;
-      --ok: #1f6b3a;
-      --ok-soft: #e8f5ec;
-      --warn: #8a5a12;
-      --warn-soft: #faf3e6;
-      --radius: 12px;
+      --ink: #072338; --body: #2c4257; --muted: #6a8199; --line: #dde5ee;
+      --navy: #0F477B; --cyan: #36BBC9; --soft: #f3f7fb; --page: #eef3f8;
+      --card: #fff; --ok: #1f6b3a; --ok-soft: #e8f5ec; --warn: #8a5a12;
+      --warn-soft: #faf3e6; --radius: 12px;
       --shadow: 0 8px 28px rgba(7, 35, 56, 0.07);
     }
     * { box-sizing: border-box; }
     body {
-      margin: 0;
-      font: 14.5px/1.45 "Inter Tight", system-ui, sans-serif;
-      color: var(--body);
-      background: var(--page);
-      min-height: 100vh;
+      margin: 0; font: 14.5px/1.45 "Inter Tight", system-ui, sans-serif;
+      color: var(--body); background: var(--page); min-height: 100vh;
     }
     .toolbar {
-      position: sticky; top: 0; z-index: 20;
+      position: sticky; top: 0; z-index: 30;
       display: flex; flex-wrap: wrap; gap: 10px 14px;
       align-items: center; justify-content: space-between;
-      padding: 12px 18px;
-      background: rgba(7, 35, 56, 0.94);
-      color: #fff;
+      padding: 12px 18px; background: rgba(7, 35, 56, 0.94); color: #fff;
       backdrop-filter: blur(8px);
     }
     .toolbar b { font: 600 14px "Jost", sans-serif; }
     .toolbar .sub { font-size: 12px; color: #9eb4c9; }
     .toolbar-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    #saveStatus { font-size: 12px; color: #9eb4c9; min-width: 7rem; }
+    #saveStatus { font-size: 12px; color: #9eb4c9; min-width: 6rem; }
     #saveStatus.ok { color: #7dceb0; }
-    button, .file-btn {
+    button {
       appearance: none; font: 600 13px "Inter Tight", sans-serif;
       padding: 8px 12px; border-radius: 7px; cursor: pointer; border: 0;
     }
     button.pri { background: var(--cyan); color: var(--ink); }
-    button.ghost, .file-btn {
+    button.ghost {
       background: transparent; color: #fff;
       border: 1px solid rgba(255,255,255,0.28);
     }
-    button.ghost:hover, .file-btn:hover { background: rgba(255,255,255,0.08); }
-    .file-btn { display: inline-block; }
-    .file-btn input { display: none; }
-    .wrap { max-width: 920px; margin: 0 auto; padding: 22px 16px 80px; }
+    button.ghost:hover { background: rgba(255,255,255,0.08); }
+    button.sec {
+      background: var(--soft); color: var(--ink); border: 1px solid var(--line);
+    }
+    button.danger { background: #fde8e8; color: #8b1e1e; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 22px 16px 90px; }
     .intro {
       background: var(--card); border: 1px solid var(--line);
-      border-radius: var(--radius); padding: 22px 24px; margin-bottom: 16px;
+      border-radius: var(--radius); padding: 22px 24px; margin-bottom: 14px;
       box-shadow: var(--shadow);
     }
     .intro .kicker {
@@ -71,379 +59,122 @@
     .intro h1 {
       font: 600 24px/1.2 "Inter Tight", sans-serif; color: var(--ink); margin: 0 0 8px;
     }
-    .intro p { margin: 0 0 8px; color: var(--muted); max-width: 40rem; }
+    .intro p { margin: 0 0 6px; color: var(--muted); max-width: 42rem; }
     .promise {
       margin-top: 12px; padding: 10px 12px; border-radius: 8px;
-      background: var(--ok-soft); border-left: 4px solid var(--ok); font-size: 13.5px; color: var(--ink);
+      background: var(--ok-soft); border-left: 4px solid var(--ok);
+      font-size: 13.5px; color: var(--ink);
     }
-    .tabs {
+    .steps {
       display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px;
-      position: sticky; top: 58px; z-index: 15;
+      position: sticky; top: 58px; z-index: 20;
       background: var(--page); padding: 8px 0;
     }
-    .tabs button {
+    .steps button {
       background: var(--card); border: 1px solid var(--line); color: var(--ink);
-      font-weight: 500; font-size: 13px; padding: 7px 12px;
+      font-weight: 500; font-size: 12.5px; padding: 7px 11px;
     }
-    .tabs button[aria-selected="true"] {
+    .steps button[aria-selected="true"] {
       background: var(--navy); color: #fff; border-color: var(--navy);
     }
+    .steps button .n {
+      font: 500 11px "IBM Plex Mono", monospace; opacity: 0.7; margin-right: 4px;
+    }
     .panel {
-      display: none;
-      background: var(--card); border: 1px solid var(--line);
-      border-radius: var(--radius); padding: 20px 22px 24px;
-      box-shadow: var(--shadow);
+      display: none; background: var(--card); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 20px 22px 24px; box-shadow: var(--shadow);
     }
     .panel.active { display: block; }
     .panel h2 {
-      font: 500 11px "IBM Plex Mono", monospace;
-      letter-spacing: 0.12em; text-transform: uppercase;
-      color: var(--navy); margin: 0 0 6px; padding-bottom: 6px;
-      border-bottom: 1px solid var(--line);
+      font: 500 11px "IBM Plex Mono", monospace; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--navy); margin: 0 0 6px;
+      padding-bottom: 6px; border-bottom: 1px solid var(--line);
     }
     .panel h3 {
-      font: 600 15px "Inter Tight", sans-serif; color: var(--ink);
-      margin: 18px 0 8px;
+      font: 600 15px "Inter Tight", sans-serif; color: var(--ink); margin: 18px 0 8px;
     }
-    .hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
-    .grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px;
-    }
+    .hint { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
     .grid .full { grid-column: 1 / -1; }
     label.field {
       display: flex; flex-direction: column; gap: 4px;
       font-size: 12px; font-weight: 600; color: var(--ink);
     }
-    label.field span.why { font-weight: 400; color: var(--muted); font-size: 11.5px; }
+    label.field .why { font-weight: 400; color: var(--muted); font-size: 11.5px; }
     input, select, textarea {
       font: inherit; color: var(--body);
       border: 1px solid var(--line); border-radius: 7px;
-      padding: 8px 10px; background: #fafcfe;
-    }
-    label.field > input:not([type="checkbox"]),
-    label.field > select,
-    label.field > textarea,
-    label.field > .combo {
-      width: 100%;
+      padding: 8px 10px; background: #fff;
     }
     input:focus, select:focus, textarea:focus {
-      outline: 2px solid rgba(17, 112, 224, 0.35); border-color: var(--blue);
+      outline: 2px solid rgba(54, 187, 201, 0.35); border-color: var(--cyan);
     }
-    select {
-      appearance: none;
-      -webkit-appearance: none;
-      padding-right: 32px;
-      background-color: #fafcfe;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236a8199' d='M1.4.6 6 5.2 10.6.6 12 2 6 8 0 2z'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 10px center;
-      cursor: pointer;
-    }
-    textarea { min-height: 64px; resize: vertical; }
-    /* Themed combobox (replaces native datalist popovers) */
-    .combo {
-      position: relative;
-      display: block;
-      width: 100%;
-    }
-    .combo > input,
-    .combo > .combo-display {
-      width: 100%;
-      padding-right: 34px;
-    }
-    .combo-display {
-      appearance: none;
-      -webkit-appearance: none;
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      min-height: 38px;
-      font: inherit;
-      color: var(--body);
-      border: 1px solid var(--line);
-      border-radius: 7px;
-      padding: 8px 34px 8px 10px;
-      background: #fafcfe;
-      cursor: pointer;
-      text-align: left;
-    }
-    .combo-display:focus {
-      outline: 2px solid rgba(17, 112, 224, 0.35);
-      border-color: var(--blue);
-    }
-    .combo-display.is-placeholder { color: var(--muted); font-weight: 400; }
-    .combo-select > select.combo-native {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      border: 0;
-      opacity: 0;
-      pointer-events: none;
-    }
-    .combo-chevron {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      pointer-events: none;
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 1;
-      z-index: 1;
-    }
-    .combo.open .combo-chevron { color: var(--blue); }
-    .combo-menu {
-      display: none;
-      position: absolute;
-      left: 0;
-      right: 0;
-      top: calc(100% + 4px);
-      z-index: 80;
-      max-height: min(280px, 45vh);
-      overflow-y: auto;
-      overflow-x: hidden;
-      overscroll-behavior: contain;
-      -webkit-overflow-scrolling: touch;
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      box-shadow: 0 14px 32px rgba(7, 35, 56, 0.14);
-      padding: 4px 0;
-      touch-action: pan-y;
-    }
-    .combo.open .combo-menu { display: block; }
-    .combo.open.drop-up .combo-menu {
-      top: auto;
-      bottom: calc(100% + 4px);
-    }
-    .combo-item {
-      display: block;
-      width: 100%;
-      text-align: left;
-      border: 0;
-      background: transparent;
-      padding: 8px 12px;
-      cursor: pointer;
-      font: inherit;
-      color: var(--ink);
-      border-radius: 0;
-    }
-    .combo-item:hover,
-    .combo-item.active {
-      background: var(--soft);
-    }
-    .combo-item .primary {
-      display: block;
-      font-weight: 500;
-      font-size: 13.5px;
-      color: var(--ink);
-    }
-    .combo-item .secondary {
-      display: block;
-      margin-top: 2px;
-      font-size: 11.5px;
-      color: var(--muted);
-      font-family: "IBM Plex Mono", monospace;
-    }
-    .combo-empty {
-      padding: 10px 12px;
-      font-size: 12.5px;
-      color: var(--muted);
-    }
-    table.data .combo { min-width: 8rem; }
-    table.data .combo-display { min-height: 34px; padding: 6px 32px 6px 8px; }
-    table.data {
-      width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 8px 0 10px;
-    }
-    table.data th, table.data td {
-      text-align: left; vertical-align: top;
-      padding: 6px 6px; border-bottom: 1px solid var(--line);
-    }
-    table.data th {
-      font: 500 9.5px "IBM Plex Mono", monospace;
-      letter-spacing: 0.06em; text-transform: uppercase;
-      color: var(--muted); background: var(--soft);
-    }
-    table.data input, table.data select { width: 100%; padding: 6px 8px; }
-    .row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 4px; }
-    .row-actions button { border: 1px solid var(--line); background: #fff; color: var(--ink); }
-    .cust-card {
+    textarea { min-height: 72px; resize: vertical; }
+    .row-card {
       border: 1px solid var(--line); border-radius: 10px;
-      padding: 14px 14px 10px; margin: 0 0 14px; background: #fafcfe;
+      padding: 14px 14px 12px; margin: 0 0 12px; background: #fafcfe;
     }
-    .cust-card .head {
-      display: flex; justify-content: space-between; align-items: center;
-      gap: 8px; margin-bottom: 10px;
+    .row-card header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 10px; margin-bottom: 10px;
     }
-    .cust-card .head strong { color: var(--ink); }
-    .cust-card .rm {
-      font-size: 12px; padding: 5px 10px;
-      border: 1px solid var(--line); background: #fff; color: #8b2e2e;
+    .row-card header strong { color: var(--ink); font-size: 14px; }
+    .row-card header .meta { font-size: 12px; color: var(--muted); }
+    .chip-grid {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px;
     }
-    .checks { list-style: none; margin: 0; padding: 0; }
-    .checks li {
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      border: 1px solid var(--line); background: #fff;
+      border-radius: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer;
+      user-select: none;
+    }
+    .chip input { margin: 0; accent-color: var(--navy); }
+    .chip.on { border-color: var(--cyan); background: #eefbfc; }
+    .lov-block {
+      border: 1px solid var(--line); border-radius: 10px;
+      padding: 12px 14px; margin: 0 0 12px; background: #fff;
+    }
+    .lov-block h4 {
+      margin: 0 0 8px; font: 600 13.5px "Inter Tight", sans-serif; color: var(--ink);
+    }
+    .lov-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+    .lov-row {
+      display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 8px; align-items: center;
+    }
+    .lov-row input { width: 100%; }
+    .nav-footer {
+      display: flex; justify-content: space-between; gap: 10px;
+      margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line);
+    }
+    .check-list { list-style: none; margin: 0; padding: 0; }
+    .check-list li {
       display: flex; gap: 10px; align-items: flex-start;
-      padding: 8px 0; border-bottom: 1px dotted #e3e8ef; font-size: 13.5px;
+      padding: 8px 0; border-bottom: 1px dotted var(--line); font-size: 13.5px;
     }
-    .checks li label { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; flex: 1; }
-    .checks input { margin-top: 3px; }
-    .check-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px 12px;
-      margin: 4px 0 8px;
-      padding: 10px 12px;
-      background: #fafcfe;
-      border: 1px solid var(--line);
-      border-radius: 8px;
+    .check-list li input { margin-top: 3px; accent-color: var(--navy); }
+    .check-list .tag {
+      font: 500 10px "IBM Plex Mono", monospace; color: var(--navy);
+      background: #e8eef8; padding: 2px 6px; border-radius: 4px; margin-right: 6px;
+      white-space: nowrap;
     }
-    .check-grid label {
-      display: flex; gap: 8px; align-items: flex-start;
-      font-size: 13px; font-weight: 500; color: var(--ink); cursor: pointer;
+    .check-list .tag.email { background: var(--ok-soft); color: var(--ok); }
+    .summary {
+      background: var(--soft); border-radius: 10px; padding: 14px 16px; margin: 12px 0;
+      font-size: 13.5px;
     }
-    .check-grid input { margin-top: 2px; flex-shrink: 0; }
-    @media (max-width: 720px) {
-      .check-grid { grid-template-columns: 1fr; }
+    .summary li { margin: 0.25rem 0; }
+    .empty {
+      color: var(--muted); font-size: 13.5px; padding: 12px;
+      border: 1px dashed var(--line); border-radius: 8px; text-align: center;
     }
-    .src-progress {
-      display: flex; flex-wrap: wrap; gap: 10px 16px;
-      align-items: center; margin: 0 0 14px;
-      padding: 10px 12px; border-radius: 8px;
-      background: var(--soft); border: 1px solid var(--line);
-      font-size: 13px; color: var(--body);
+    .warn-box {
+      background: var(--warn-soft); border-left: 3px solid var(--warn);
+      padding: 10px 12px; border-radius: 0 8px 8px 0; font-size: 13px; margin: 0 0 12px;
     }
-    .src-progress strong { color: var(--ink); }
-    .src-progress .bar {
-      flex: 1; min-width: 120px; height: 6px;
-      background: #d7e1ea; border-radius: 99px; overflow: hidden;
-    }
-    .src-progress .bar > i {
-      display: block; height: 100%; width: 0%;
-      background: var(--cyan); border-radius: 99px;
-      transition: width 0.2s ease;
-    }
-    .phase-block { margin: 0 0 16px; }
-    .phase-block > h3 {
-      margin: 0 0 8px;
-      font: 600 14px "Inter Tight", sans-serif;
-      color: var(--navy);
-    }
-    .phase-block > .phase-sub {
-      margin: -4px 0 10px;
-      font-size: 12.5px; color: var(--muted);
-    }
-    .source-step {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      margin: 0 0 8px;
-      background: #fff;
-      overflow: hidden;
-    }
-    .source-step.open { border-color: var(--navy); background: #fafcfe; }
-    .source-step.done { border-left: 3px solid var(--ok); }
-    .source-step .step-toggle {
-      display: flex; width: 100%; align-items: flex-start; gap: 10px;
-      padding: 12px 14px; border: 0; background: none;
-      text-align: left; cursor: pointer; color: inherit; font: inherit;
-    }
-    .source-step .step-toggle:hover { background: var(--soft); }
-    .source-step .step-no {
-      font: 500 12px "IBM Plex Mono", monospace;
-      color: var(--cyan); flex-shrink: 0; padding-top: 2px;
-    }
-    .source-step .step-main { flex: 1; min-width: 0; }
-    .source-step .step-title {
-      font: 600 14.5px "Inter Tight", sans-serif;
-      color: var(--ink); display: block;
-    }
-    .source-step .step-summary {
-      display: block; margin-top: 3px;
-      font-size: 12.5px; color: var(--muted);
-    }
-    .source-step .step-summary.ok { color: var(--ok); }
-    .source-step .chev {
-      color: var(--muted); font-size: 12px; padding-top: 3px;
-      transition: transform 0.15s ease;
-    }
-    .source-step.open .chev { transform: rotate(180deg); }
-    .source-step .step-body {
-      display: none;
-      padding: 0 14px 14px;
-      border-top: 1px solid var(--line);
-    }
-    .source-step.open .step-body { display: block; padding-top: 12px; }
-    .source-step .fills {
-      margin: 0 0 10px;
-      font-size: 13px;
-      color: var(--muted);
-    }
-    .source-step .fills strong { color: var(--body); font-weight: 600; }
-    .source-step .ask-label {
-      font-size: 12px; font-weight: 600; color: var(--ink);
-      margin: 0 0 6px;
-    }
-    .source-step .step-nav {
-      display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;
-    }
-    .source-step .step-nav button {
-      border: 1px solid var(--line); background: #fff; color: var(--ink);
-    }
-    .tag {
-      display: inline-block; font: 500 9.5px/1 "IBM Plex Mono", monospace;
-      padding: 3px 6px; border-radius: 3px; margin-right: 6px; white-space: nowrap;
-    }
-    .tag-doc { background: #e7f1fe; color: var(--blue); }
-    .tag-email { background: #e1f9f0; color: #0b7a57; }
-    .tag-note { background: var(--soft); color: #47688B; }
-    .legend { display: flex; flex-wrap: wrap; gap: 10px 14px; margin: 0 0 12px; font-size: 13px; }
-    .pack-group { margin: 0 0 18px; }
-    .pack-group h3 { margin: 0 0 8px; font: 600 14px "Inter Tight", sans-serif; color: var(--navy); }
-    .pack-group .pack-count {
-      font: 500 12px "IBM Plex Mono", monospace; color: var(--muted); margin-left: 6px;
-    }
-    .pack-list { list-style: none; margin: 0; padding: 0; }
-    .pack-list li {
-      display: flex; gap: 10px; align-items: flex-start;
-      padding: 10px 12px; margin: 0 0 6px;
-      border: 1px solid var(--line); border-radius: 8px; background: #fff;
-      font-size: 13.5px; color: var(--ink);
-    }
-    .pack-list li .kind {
-      flex-shrink: 0; font: 500 10px/1 "IBM Plex Mono", monospace;
-      padding: 4px 6px; border-radius: 3px; margin-top: 1px;
-    }
-    .pack-list .kind-doc { background: #e7f1fe; color: var(--blue); }
-    .pack-list .kind-email { background: #e1f9f0; color: #0b7a57; }
-    .pack-list .kind-recording { background: #fef3e2; color: #9a5b00; }
-    .pack-list .kind-note { background: var(--soft); color: #47688B; }
-    .pack-list .meta { display: block; margin-top: 3px; font-size: 12px; color: var(--muted); }
-    .pack-empty {
-      padding: 14px; border: 1px dashed var(--line); border-radius: 8px;
-      color: var(--muted); font-size: 13.5px; background: var(--soft);
-    }
-    .pack-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
-    .csv-box {
-      margin: 12px 0; padding: 12px; border-radius: 8px;
-      background: var(--warn-soft); border-left: 3px solid var(--warn); font-size: 13px;
-    }
-    .csv-box .row-actions { margin-top: 8px; }
-    .csv-box button, .csv-box .file-btn {
-      border: 1px solid #d4b48a; background: #fff; color: var(--ink);
-    }
-    footer.foot {
-      margin-top: 20px; font-size: 12px; color: var(--muted); text-align: center;
-    }
-    @media (max-width: 720px) {
-      .grid { grid-template-columns: 1fr; }
-      .tabs { top: 96px; }
-    }
-    @media print {
-      .toolbar, .tabs, .row-actions, .csv-box, .file-btn { display: none !important; }
-      .panel { display: block !important; box-shadow: none; border: 0; page-break-after: always; }
+    @media (max-width: 700px) {
+      .grid, .lov-row { grid-template-columns: 1fr; }
+      .steps { top: 96px; }
     }
   </style>
 </head>
@@ -451,2901 +182,970 @@
   <div class="toolbar">
     <div>
       <b>Agro Hub × TraceRoot</b>
-      <div class="sub">Export desk — data collection</div>
+      <div class="sub">Master data wizard — products, packs, customers, LOVs</div>
     </div>
     <div class="toolbar-actions">
       <span id="saveStatus">Ready</span>
-      <label class="field" style="flex-direction:row;align-items:center;gap:6px;font-weight:500;color:#c5d6e6;font-size:12px">
-        Draft
-        <input id="workspaceName" name="workspaceName" placeholder="e.g. Agro Hub Apr 2026" style="width:11rem;padding:6px 8px" />
-      </label>
-      <button type="button" class="ghost" id="btnPrint">Print</button>
-      <button type="button" class="ghost" id="btnClear">Clear draft</button>
-      <button type="button" class="ghost" id="btnPack" style="border-color:#7eb8d4;color:#e8f4fc">Send pack</button>
-      <button type="button" class="pri" id="btnJson">Download JSON + checklist</button>
+      <button type="button" class="ghost" id="btnReset">Reset</button>
+      <button type="button" class="ghost" id="btnXlsx">Download Excel</button>
+      <button type="button" class="pri" id="btnJson">Download JSON</button>
     </div>
   </div>
 
   <div class="wrap">
     <div class="intro">
-      <p class="kicker">Data collection portal</p>
-      <h1>Tell us how your export desk works</h1>
+      <p class="kicker">Client masters</p>
+      <h1>Enter masters in order — we link them for you</h1>
       <p>
-        Most important: for each form TraceRoot will fill, tell us
-        <strong>which document or email you use today</strong> as the source
-        (tab <strong>2. Form sources</strong>). Then add company, customers, and products.
-        Progress saves in this browser — download JSON when done.
+        Define dropdowns and products first (with packaging options).
+        Then pick which products each customer buys — packaging appears automatically.
+        Progress saves in this browser. When done, download JSON (and optional Excel) for TraceRoot.
       </p>
       <div class="promise">
-        Prefer Excel for customers/products? Use <strong>CSV templates</strong> on those tabs,
-        then Import CSV. Attach sample PDFs / emails when you send the JSON to TraceRoot.
+        Sample PDFs / emails are a separate checklist on the last step — attach those when you send the download.
       </div>
     </div>
 
-    <nav class="tabs" role="tablist" aria-label="Sections">
-      <button type="button" role="tab" aria-selected="true" data-tab="company">1. Company</button>
-      <button type="button" role="tab" aria-selected="false" data-tab="docs">2. Form sources</button>
-      <button type="button" role="tab" aria-selected="false" data-tab="customers">3. Customers</button>
-      <button type="button" role="tab" aria-selected="false" data-tab="products">4. Products</button>
-      <button type="button" role="tab" aria-selected="false" data-tab="partners">5. Partners</button>
-      <button type="button" role="tab" aria-selected="false" data-tab="send">6. Send pack</button>
+    <nav class="steps" role="tablist" aria-label="Steps">
+      <button type="button" role="tab" aria-selected="true" data-step="company"><span class="n">1</span>Company</button>
+      <button type="button" role="tab" aria-selected="false" data-step="lovs"><span class="n">2</span>Dropdowns</button>
+      <button type="button" role="tab" aria-selected="false" data-step="products"><span class="n">3</span>Products</button>
+      <button type="button" role="tab" aria-selected="false" data-step="customers"><span class="n">4</span>Customers</button>
+      <button type="button" role="tab" aria-selected="false" data-step="forwarders"><span class="n">5</span>Forwarders</button>
+      <button type="button" role="tab" aria-selected="false" data-step="samples"><span class="n">6</span>Samples &amp; send</button>
     </nav>
 
-    <!-- COMPANY -->
-    <section class="panel active" id="panel-company" role="tabpanel">
-      <h2>1. Agro Hub — your company</h2>
-      <p class="hint">Shipper block on B/L, CI, ISF, and e-COO. Match the wording on your documents.</p>
-
-      <h3>Legal / shipper</h3>
-      <div class="grid" id="companyFields">
-        <label class="field full">Legal company name
-          <span class="why">SHIPPER on B/L and invoices</span>
-          <input data-path="company.legalName" placeholder="AGRO HUB INTERNATIONAL (PVT) LTD" />
-        </label>
-        <label class="field full">Shipper address — street
-          <input data-path="company.street" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore="true" />
-        </label>
-        <label class="field">City
-          <input data-path="company.city" data-combo="lov-cityPk" placeholder="Pick or type" autocomplete="one-time-code" />
-        </label>
-        <label class="field">State / province
-          <input data-path="company.state" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore="true" />
-        </label>
-        <label class="field">Postal code
-          <input data-path="company.postalCode" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore="true" />
-        </label>
-        <label class="field">Country
-          <input data-path="company.country" data-combo="lov-country" placeholder="Pick or type" autocomplete="one-time-code" />
-        </label>
-        <label class="field full">Shipper TEL / FAX
-          <input data-path="company.shipperContact" />
-        </label>
-        <label class="field">FDA registration number
-          <input data-path="company.fdaRegistrationNo" />
-        </label>
-        <label class="field">Default POL
-          <input data-path="company.defaultPol" data-combo="lov-pol" placeholder="Pick or type" autocomplete="off" />
-        </label>
-        <label class="field">Country of origin (default)
-          <input data-path="company.countryOfOrigin" data-combo="lov-country" placeholder="Pick or type" autocomplete="off" />
-        </label>
-      </div>
-
-      <h3>ISF parties (when Agro Hub is seller)</h3>
-      <p class="hint">
-        US shipments only — leave empty if you never file ISF. Add parties as needed
-        (seller, manufacturer, consolidator, stuffing, …). Tick
-        <strong>Same as shipper</strong> to copy from the legal / shipper block above.
-      </p>
-      <div id="isfPartiesList"></div>
-      <div class="row-actions">
-        <button type="button" id="addIsfParty">+ Add ISF party</button>
-        <button type="button" class="ghost" id="addIsfUsual" style="border-color:var(--line);color:var(--ink);background:#fff">Add usual 4 roles</button>
-      </div>
-
-      <h3>Banks on FI / FIA forms</h3>
-      <table class="data" id="banksTable">
-        <thead>
-          <tr>
-            <th>Bank name</th>
-            <th>IBAN / account</th>
-            <th>FI email / contact</th>
-            <th>Notes</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <div class="row-actions">
-        <button type="button" id="addBank">+ Add bank</button>
-      </div>
-
-      <h3>Internal contacts</h3>
-      <div class="grid">
-        <label class="field">Sales — name
-          <input data-path="contacts.salesName" />
-        </label>
-        <label class="field">Sales — email
-          <input type="email" data-path="contacts.salesEmail" />
-        </label>
-        <label class="field">Export desk — name
-          <input data-path="contacts.exportName" />
-        </label>
-        <label class="field">Export desk — email
-          <input type="email" data-path="contacts.exportEmail" />
-        </label>
-        <label class="field">Production — name
-          <input data-path="contacts.productionName" />
-        </label>
-        <label class="field">Production — email
-          <input type="email" data-path="contacts.productionEmail" />
-        </label>
-        <label class="field">Finance / AR — name
-          <input data-path="contacts.financeName" />
-        </label>
-        <label class="field">Finance / AR — email
-          <input type="email" data-path="contacts.financeEmail" />
-        </label>
-      </div>
-
-      <h3>Default commercial rules</h3>
-      <div class="grid">
-        <label class="field">Default pallet type
-          <select data-path="defaults.palletType">
-            <option value="">—</option>
-            <option value="non_wood">Non-wood</option>
-            <option value="wood">Wood</option>
-            <option value="depends">Depends (explain in notes)</option>
-          </select>
-        </label>
-        <label class="field">Default freight marking
-          <input data-path="defaults.freightMarking" data-combo="lov-freight" placeholder="Pick or type" autocomplete="off" />
-        </label>
-        <label class="field full">Default payment terms
-          <input data-path="defaults.paymentTerms" data-combo="lov-payment" placeholder="Pick or type" autocomplete="off" />
-        </label>
-        <label class="field full">Default incoterms
-          <input data-path="defaults.incoterms" data-combo="lov-incoterms" placeholder="Pick or type" autocomplete="off" />
-        </label>
-        <label class="field full">Documents usually listed on PI
-          <span class="why">Tick all that appear on your proforma</span>
-          <div class="check-grid" id="piDocsChecks"></div>
-        </label>
-        <label class="field full">Physical bank set (what you print)
-          <span class="why">Tick what goes in the envelope to the bank</span>
-          <div class="check-grid" id="bankSetChecks"></div>
-        </label>
-        <label class="field full">AR reminder habit
-          <select data-path="defaults.arReminderCadence" data-lov="arCadence">
-            <option value="">—</option>
-          </select>
-        </label>
-        <label class="field full">Pallet / other notes
-          <textarea data-path="defaults.notes"></textarea>
-        </label>
+    <!-- 1 COMPANY -->
+    <section class="panel active" id="panel-company" data-panel="company">
+      <h2>1. Agro Hub company</h2>
+      <p class="hint">Letterhead fields for invoices, FI, and ISF seller defaults.</p>
+      <div class="grid" id="companyForm"></div>
+      <h3>Banks</h3>
+      <p class="hint">Used on FI request / letterhead. Mark one as default.</p>
+      <div id="banksList"></div>
+      <button type="button" class="sec" id="addBank">+ Add bank</button>
+      <div class="nav-footer">
+        <span></span>
+        <button type="button" class="pri" data-next="lovs">Next: Dropdowns →</button>
       </div>
     </section>
 
-    <!-- CUSTOMERS -->
-    <section class="panel" id="panel-customers" role="tabpanel">
-      <h2>3. Customers</h2>
-      <p class="hint">One card per export buyer. Add as many as you need.</p>
-
-      <div class="csv-box">
-        <strong>CSV option</strong> — download a blank template, fill in Excel, then import.
-        <div class="row-actions">
-          <button type="button" id="dlCustCsv">Download customers CSV template</button>
-          <label class="file-btn">Import customers CSV
-            <input type="file" id="importCustCsv" accept=".csv,text/csv" />
-          </label>
-        </div>
+    <!-- 2 LOVS -->
+    <section class="panel" id="panel-lovs" data-panel="lovs">
+      <h2>2. Dropdown lists (LOVs)</h2>
+      <p class="hint">Closed lists used across the dashboard. Consignee comes from Customers — not listed here. Carriers / vessels grow later from CRO / BL.</p>
+      <div id="lovsRoot"></div>
+      <div class="nav-footer">
+        <button type="button" class="sec" data-next="company">← Company</button>
+        <button type="button" class="pri" data-next="products">Next: Products →</button>
       </div>
+    </section>
 
+    <!-- 3 PRODUCTS -->
+    <section class="panel" id="panel-products" data-panel="products">
+      <h2>3. Products</h2>
+      <p class="hint">One card per product. Tick every packaging type that product can ship in — pulled from Dropdowns. No need to retype SKUs on a packaging sheet.</p>
+      <div class="warn-box" id="packWarn" hidden>Add at least one packaging type under Dropdowns before assigning packs to products.</div>
+      <div id="productsList"></div>
+      <button type="button" class="sec" id="addProduct">+ Add product</button>
+      <div class="nav-footer">
+        <button type="button" class="sec" data-next="lovs">← Dropdowns</button>
+        <button type="button" class="pri" data-next="customers">Next: Customers →</button>
+      </div>
+    </section>
+
+    <!-- 4 CUSTOMERS -->
+    <section class="panel" id="panel-customers" data-panel="customers">
+      <h2>4. Customers</h2>
+      <p class="hint">Pick products from your catalog. Packaging for each selected product shows automatically. Optionally untick packs this customer never uses.</p>
       <div id="customersList"></div>
-      <div class="row-actions">
-        <button type="button" id="addCustomer">+ Add customer</button>
+      <button type="button" class="sec" id="addCustomer">+ Add customer</button>
+      <div class="nav-footer">
+        <button type="button" class="sec" data-next="products">← Products</button>
+        <button type="button" class="pri" data-next="forwarders">Next: Forwarders →</button>
       </div>
     </section>
 
-    <!-- PRODUCTS -->
-    <section class="panel" id="panel-products" role="tabpanel">
-      <h2>4. Product / SKU catalog</h2>
-      <p class="hint">
-        Add the <strong>real SKUs you sell</strong> here (including bag size if that’s how you invoice —
-        e.g. “Basmati rice 25 kg bags”). The commodity picker only lists product
-        <em>types</em> so HS codes stay easy; bag-level detail belongs in this table or CSV.
-      </p>
+    <!-- 5 FORWARDERS -->
+    <section class="panel" id="panel-forwarders" data-panel="forwarders">
+      <h2>5. Forwarders</h2>
+      <p class="hint">Portal (e.g. Seagold / Gama) vs manual (BL template → checking copy).</p>
+      <div id="forwardersList"></div>
+      <button type="button" class="sec" id="addForwarder">+ Add forwarder</button>
+      <div class="nav-footer">
+        <button type="button" class="sec" data-next="customers">← Customers</button>
+        <button type="button" class="pri" data-next="samples">Next: Samples &amp; send →</button>
+      </div>
+    </section>
 
-      <div class="csv-box">
-        <strong>CSV option</strong>
-        <div class="row-actions">
-          <button type="button" id="dlProdCsv">Download products CSV template</button>
-          <label class="file-btn">Import products CSV
-            <input type="file" id="importProdCsv" accept=".csv,text/csv" />
-          </label>
+    <!-- 6 SAMPLES -->
+    <section class="panel" id="panel-samples" data-panel="samples">
+      <h2>6. Samples &amp; send</h2>
+      <p class="hint">Tick what you will attach with the JSON/Excel. One real USA shipment pack is ideal.</p>
+      <div class="summary" id="reviewSummary"></div>
+      <h3>Documents</h3>
+      <ul class="check-list" id="docChecks"></ul>
+      <h3>Emails</h3>
+      <ul class="check-list" id="emailChecks"></ul>
+      <div class="nav-footer">
+        <button type="button" class="sec" data-next="forwarders">← Forwarders</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="sec" id="btnXlsx2">Download Excel</button>
+          <button type="button" class="pri" id="btnJson2">Download JSON</button>
         </div>
       </div>
-
-      <table class="data" id="productsTable">
-        <thead>
-          <tr>
-            <th>SKU</th>
-            <th>Description</th>
-            <th>Unit</th>
-            <th>Typical qty</th>
-            <th>Unit price</th>
-            <th>HS code</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <div class="row-actions">
-        <button type="button" id="addProduct">+ Add product</button>
-      </div>
     </section>
-
-    <!-- PARTNERS -->
-    <section class="panel" id="panel-partners" role="tabpanel">
-      <h2>5. External partners</h2>
-      <p class="hint">
-        Add every forwarder you use. Only <strong>Seagold</strong> uses the Gama portal;
-        every other forwarder is manual — you fill their B/L template and email it.
-        For each forwarder we also need a <strong>checking-copy</strong> sample (email / PDF).
-      </p>
-
-      <h3>Forwarders</h3>
-      <div id="forwardersList"></div>
-      <div class="row-actions">
-        <button type="button" id="addForwarder">+ Add forwarder</button>
-      </div>
-
-      <h3>Other partners</h3>
-      <div class="grid">
-        <label class="field">Clearing agent — name
-          <input data-path="partners.clearingName" />
-        </label>
-        <label class="field">Clearing agent — email / phone
-          <input data-path="partners.clearingContact" />
-        </label>
-        <label class="field">Fumigator — name
-          <input data-path="partners.fumigatorName" />
-        </label>
-        <label class="field">Fumigator — email / phone
-          <input data-path="partners.fumigatorContact" />
-        </label>
-        <label class="field">Flexport / ISF agent — name
-          <input data-path="partners.isfAgentName" />
-        </label>
-        <label class="field">ISF agent — email
-          <input data-path="partners.isfAgentEmail" />
-        </label>
-        <label class="field full">Other partners / notes
-          <textarea data-path="partners.notes"></textarea>
-        </label>
-      </div>
-    </section>
-
-    <!-- FORM SOURCES (was buried as samples-only; this is the core ask) -->
-    <section class="panel" id="panel-docs" role="tabpanel">
-      <h2>2. Form sources</h2>
-      <p class="hint">
-        For each form below, tick the documents or emails you use today to fill it.
-      </p>
-      <div class="src-progress" id="srcProgress" aria-live="polite">
-        <span><strong id="srcProgressCount">0</strong> of <span id="srcProgressTotal">0</span> forms answered</span>
-        <div class="bar" aria-hidden="true"><i id="srcProgressBar"></i></div>
-        <button type="button" class="ghost" id="btnSrcDefaults" style="border-color:var(--line);color:var(--ink);background:#fff">Use typical defaults</button>
-      </div>
-      <div class="legend">
-        <span><span class="tag tag-doc">Document</span> File / scan</span>
-        <span><span class="tag tag-email">Email / chat</span> Message</span>
-        <span><span class="tag tag-note">System</span> SAP / PSW / portal</span>
-      </div>
-      <div id="docsList"></div>
-      <h3>Anything else</h3>
-      <label class="field full">Other sources or exceptions we should know
-        <textarea data-path="documents.extraNotes" rows="3" placeholder="e.g. True Spice always uses a different CI layout…"></textarea>
-      </label>
-    </section>
-
-    <!-- SEND PACK — generated from answers -->
-    <section class="panel" id="panel-send" role="tabpanel">
-      <h2>6. What to send TraceRoot</h2>
-      <p class="hint">
-        Built from your Form sources and Partners answers. Compile these samples,
-        then download the JSON and email everything together.
-      </p>
-      <div class="csv-box" id="packSummary">
-        Fill Form sources and Partners first — this list updates as you go.
-      </div>
-      <div class="pack-actions">
-        <button type="button" class="pri" id="btnDownloadAll">Download JSON + checklist</button>
-        <button type="button" id="btnChecklistOnly">Download checklist only (.txt)</button>
-        <button type="button" class="ghost" id="btnCopyEmail" style="border-color:var(--line);color:var(--ink);background:#fff">Copy email draft</button>
-      </div>
-      <div id="samplePackRoot"></div>
-    </section>
-
-    <p class="foot">
-      When finished: open <strong>6. Send pack</strong> → download JSON + checklist →
-      email TraceRoot with the listed sample files.
-    </p>
   </div>
 
 <script>
 (function () {
-  var STORAGE_PREFIX = "traceroot.agroHubData.v1.";
-  var LAST_WS_KEY = "traceroot.agroHubData.lastWorkspace";
-  var KIND = "agro-hub-data-collection";
+  "use strict";
 
-  var LOV = {
-    country: [
-      "Pakistan", "United States", "United Arab Emirates", "United Kingdom",
-      "Canada", "Saudi Arabia", "China", "India", "Singapore", "Other"
-    ],
-    cityPk: ["Karachi", "Port Qasim", "Lahore", "Other"],
-    pol: ["Karachi", "Port Qasim", "Karachi / Port Qasim", "Other"],
-    pod: [
-      "JACKSONVILLE, U.S.A.", "ATLANTA, USA", "NEW YORK, USA", "LOS ANGELES, USA",
-      "HOUSTON, USA", "SAVANNAH, USA", "NORFOLK, USA", "CHARLESTON, USA",
-      "JEBEL ALI, UAE", "DUBAI, UAE", "ROTTERDAM, NL", "Other"
-    ],
-    payment: ["CAD", "ADV", "Advance Payment", "Net 30", "Net 45", "Net 60", "100% CAD ADVANCE", "Other"],
-    incoterms: [
-      "CFR - Cost & Freight", "CIF - Cost Insurance & Freight", "FOB - Free on Board",
-      "CFR", "CIF", "FOB", "EXW", "Other"
-    ],
-    freight: ["FREIGHT PREPAID", "FREIGHT COLLECT", "Other"],
-    unit: ["KG", "KGS", "MT", "BAGS", "bag", "PCS", "CTN", "LB", "CS", "Other"],
-    bank: [
-      "DUBAI ISLAMIC BANK", "HABIB BANK LIMITED", "MEEZAN BANK",
-      "UNITED BANK LIMITED", "BANK AL HABIB", "MCB BANK", "Other"
-    ],
-    arCadence: [
-      "7 days before due, on due, +7 days",
-      "On due date only",
-      "Weekly until paid",
-      "No automated reminders",
-      "Other"
-    ]
-  };
+  var STORAGE_KEY = "agro-hub-masters-v2";
+  var STEPS = ["company", "lovs", "products", "customers", "forwarders", "samples"];
 
-  var PI_DOC_OPTIONS = [
-    "COMMERCIAL INVOICE",
-    "PACKING LIST",
-    "FULL SET 3/3 ORIGINAL BILL OF LADING",
-    "CERTIFICATE OF ORIGIN",
-    "PHYTOSANITARY CERTIFICATE",
-    "TREATMENT / FUMIGATION CERTIFICATE",
-    "INSURANCE CERTIFICATE",
-    "QUALITY / ANALYSIS CERTIFICATE",
-    "WEIGHT / MEASUREMENT LIST",
-    "ISF FILING CONFIRMATION",
-    "HEALTH CERTIFICATE",
-    "NON-WOOD PACKING DECLARATION"
+  var DOC_SAMPLES = [
+    { id: "pi", label: "Proforma invoice (final)" },
+    { id: "cro", label: "CRO / booking confirmation" },
+    { id: "ci", label: "Commercial invoice (posted)" },
+    { id: "gate", label: "Gate pass" },
+    { id: "customs", label: "Customs invoice" },
+    { id: "fi", label: "Bank FI request (+ issued FI if any)" },
+    { id: "gd", label: "GD (PSW print)" },
+    { id: "tc", label: "Treatment / phyto (if wooden pallets)" },
+    { id: "bl", label: "Draft / house B/L + OBL" },
+    { id: "pl", label: "Packing list" },
+    { id: "coo", label: "e-COO (if issued)" },
+    { id: "isf", label: "ISF worksheet (US)" },
+    { id: "pack", label: "Customer document pack (as sent)" },
+    { id: "templates", label: "Blank templates (PI, CI, customs, FI, packing, BL, ISF)" }
+  ];
+  var EMAIL_SAMPLES = [
+    { id: "e_pi", label: "Sales → Export: PI attached" },
+    { id: "e_amend", label: "Sales → Export: PI amendment" },
+    { id: "e_cro", label: "Sales → Export: CRO forwarded" },
+    { id: "e_fi", label: "Export → Bank: FI request" },
+    { id: "e_fi_fix", label: "Bank → Export: FI correction (if any)" },
+    { id: "e_clear", label: "Export → Clearing agent: customs pack" },
+    { id: "e_bl", label: "Forwarder ↔ Export: draft BL / checking copy" },
+    { id: "e_isf", label: "Export → Customer / ISF agent: ISF sheet" },
+    { id: "e_pack", label: "Export → Customer: final document pack" }
   ];
 
-  var BANK_SET_OPTIONS = [
-    "Covering letter",
-    "Commercial invoice",
-    "Packing list",
-    "OBL / HBL scan",
-    "GD",
-    "e-COO",
-    "Other"
-  ];
-
-  var PACK_DOC_OPTIONS = [
-    { id: "bill_of_lading", label: "Original / house B/L" },
-    { id: "customer_invoice", label: "Commercial invoice (customer version)" },
-    { id: "packing_list", label: "Packing list" },
-    { id: "e_coo", label: "e-COO / certificate of origin" },
-    { id: "container_photo", label: "Container photo" },
-    { id: "treatment_certificate", label: "Fumigation / TC (wood)" },
-    { id: "phytosanitary", label: "Phytosanitary" },
-    { id: "isf_confirmation", label: "ISF filing confirmation" }
-  ];
-
-  /**
-   * Seed commodities for HS lookup — product type only (not bag SKUs).
-   * Exact sellable SKUs / pack sizes belong on the Products tab (or CSV).
-   */
-  var COMMODITY_CATALOG = [
-    { sku: "SALT-FINE", description: "Himalayan pink salt — fine", hsCode: "2501.0090", unit: "KG", typicalQty: "", unitPrice: "" },
-    { sku: "SALT-COARSE", description: "Himalayan pink salt — coarse", hsCode: "2501.0090", unit: "KG", typicalQty: "", unitPrice: "" },
-    { sku: "SALT", description: "Himalayan salt products", hsCode: "2501.0090", unit: "KG", typicalQty: "", unitPrice: "" },
-    { sku: "RICE-BASMATI", description: "Basmati rice", hsCode: "1006.30", unit: "KG", typicalQty: "", unitPrice: "" },
-    { sku: "RICE-LONG", description: "Long grain rice", hsCode: "1006.30", unit: "KG", typicalQty: "", unitPrice: "" },
-    { sku: "RICE-BROKEN", description: "Broken rice", hsCode: "1006.40", unit: "KG", typicalQty: "", unitPrice: "" },
-    { sku: "CUMIN", description: "Cumin seed (whole)", hsCode: "0909.31", unit: "KG", typicalQty: "", unitPrice: "" },
-    { sku: "CORIANDER", description: "Coriander seed", hsCode: "0909.21", unit: "KG", typicalQty: "", unitPrice: "" },
-    { sku: "TURMERIC", description: "Turmeric powder", hsCode: "0910.30", unit: "KG", typicalQty: "", unitPrice: "" },
-    { sku: "CHILI", description: "Red chili (whole / crushed)", hsCode: "0904.21", unit: "KG", typicalQty: "", unitPrice: "" },
-    { sku: "PALLET-WOOD", description: "Wooden pallet", hsCode: "4415.20", unit: "PCS", typicalQty: "1", unitPrice: "" },
-    { sku: "PALLET-NONWOOD", description: "Non-wood pallet", hsCode: "3923.90", unit: "PCS", typicalQty: "1", unitPrice: "" }
-  ];
-
-  var HS_BY_KEYWORD = [
-    { re: /broken\s*rice|1006\.40/i, hsCode: "1006.40" },
-    { re: /basmati|long\s*grain|rice|1006\.30/i, hsCode: "1006.30" },
-    { re: /salt|2501/i, hsCode: "2501.0090" },
-    { re: /cumin|0909\.31/i, hsCode: "0909.31" },
-    { re: /coriander|0909\.21/i, hsCode: "0909.21" },
-    { re: /turmeric|0910\.30/i, hsCode: "0910.30" },
-    { re: /chili|chilli|pepper|0904/i, hsCode: "0904.21" },
-    { re: /wood(en)?\s*pallet|4415/i, hsCode: "4415.20" },
-    { re: /non[- ]?wood\s*pallet|plastic\s*pallet/i, hsCode: "3923.90" }
-  ];
-
-  function lookupCommodity(skuOrDesc) {
-    var q = String(skuOrDesc || "").trim();
-    if (!q) return null;
-    var qLower = q.toLowerCase();
-    var fromState = (state.products || []).map(function (p) {
-      return {
-        sku: p.sku || "",
-        description: p.description || "",
-        hsCode: p.hsCode || "",
-        unit: p.unit || "",
-        typicalQty: p.typicalQty || "",
-        unitPrice: p.unitPrice || ""
-      };
-    });
-    var all = COMMODITY_CATALOG.concat(fromState);
-    var exact = all.find(function (c) {
-      return c.sku.toLowerCase() === qLower || c.description.toLowerCase() === qLower;
-    });
-    if (exact && exact.hsCode) return exact;
-    for (var i = 0; i < HS_BY_KEYWORD.length; i++) {
-      if (HS_BY_KEYWORD[i].re.test(q)) {
-        return {
-          sku: "",
-          description: q,
-          hsCode: HS_BY_KEYWORD[i].hsCode,
-          unit: "",
-          typicalQty: "",
-          unitPrice: ""
-        };
-      }
-    }
-    return exact || null;
+  function uid(prefix) {
+    return prefix + "-" + Math.random().toString(36).slice(2, 8);
   }
 
-  function applyCommodityToProduct(p, hit, onlyEmpty) {
-    if (!hit) return;
-    if (!onlyEmpty || !p.sku) p.sku = hit.sku || p.sku;
-    if (!onlyEmpty || !p.description) p.description = hit.description || p.description;
-    if (!onlyEmpty || !p.hsCode) p.hsCode = hit.hsCode || p.hsCode;
-    if ((!onlyEmpty || !p.unit) && hit.unit) p.unit = hit.unit;
-    if ((!onlyEmpty || !p.typicalQty) && hit.typicalQty) p.typicalQty = hit.typicalQty;
-    if ((!onlyEmpty || !p.unitPrice) && hit.unitPrice) p.unitPrice = hit.unitPrice;
-  }
-
-  function applyCommodityToCustomer(c, hit) {
-    if (!hit) return;
-    if (hit.sku) c.productSku = hit.sku;
-    if (hit.description) c.productDescription = hit.description;
-    if (hit.hsCode) c.hsCode = hit.hsCode;
-    if (hit.unit) c.unit = hit.unit;
-    if (hit.typicalQty && !c.quantity) c.quantity = hit.typicalQty;
-    if (hit.unitPrice && !c.unitPrice) c.unitPrice = hit.unitPrice;
-  }
-
-  function commodityComboOptions() {
-    var seen = {};
-    var opts = [];
-    function add(c) {
-      if (!c || !(c.description || c.sku)) return;
-      var key = ((c.sku || "") + "|" + (c.description || "")).toLowerCase();
-      if (seen[key]) return;
-      seen[key] = true;
-      var primary = c.description || c.sku;
-      var secondary = c.hsCode
-        ? ("HS " + c.hsCode + (c.sku ? " · " + c.sku : ""))
-        : (c.sku || "");
-      opts.push({
-        value: primary,
-        primary: primary,
-        secondary: secondary,
-        sku: c.sku || "",
-        description: c.description || ""
-      });
-    }
-    // Seed commodities first, then any real SKUs the client added on Products
-    COMMODITY_CATALOG.forEach(add);
-    (state.products || []).forEach(add);
-    return opts;
-  }
-
-  function comboOptionsFor(listId) {
-    if (listId === "lov-commodity") return commodityComboOptions();
-    if (listId === "lov-forwarders") {
-      return (state.partners && state.partners.forwarders || [])
-        .map(function (f) { return (f.name || "").trim(); })
-        .filter(Boolean)
-        .map(function (n) { return { value: n, primary: n, secondary: "" }; });
-    }
-    if (listId === "lov-fwd-known") {
-      return [{ value: "Seagold", primary: "Seagold", secondary: "Gama portal" }];
-    }
-    var key = String(listId || "").replace(/^lov-/, "");
-    var list = LOV[key];
-    if (!list) return [];
-    return list.filter(function (x) { return x !== "Other"; }).map(function (opt) {
-      return { value: opt, primary: opt, secondary: "" };
-    });
-  }
-
-  function fillLovSelects() {
-    document.querySelectorAll("select[data-lov]").forEach(function (sel) {
-      var key = sel.getAttribute("data-lov");
-      var list = LOV[key];
-      if (!list) return;
-      var current = sel.value;
-      while (sel.options.length > 1) sel.remove(1);
-      list.forEach(function (opt) {
-        var o = document.createElement("option");
-        o.value = opt;
-        o.textContent = opt;
-        sel.appendChild(o);
-      });
-      if (current) sel.value = current;
-    });
-    enhanceAllPickers(document);
-    document.querySelectorAll(".combo.combo-select").forEach(syncSelectDisplay);
-  }
-
-  /* ---- themed combobox + select (replaces native datalist / OS menus) ---- */
-  var activeCombo = null;
-
-  function closeCombo(wrap) {
-    if (!wrap) return;
-    wrap.classList.remove("open", "drop-up");
-    if (activeCombo === wrap) activeCombo = null;
-  }
-
-  function closeAllCombos() {
-    document.querySelectorAll(".combo.open").forEach(closeCombo);
-  }
-
-  function selectLabelForValue(sel, value) {
-    var opts = sel.options;
-    for (var i = 0; i < opts.length; i++) {
-      if (opts[i].value === value) return opts[i].textContent || opts[i].value;
-    }
-    return value || "";
-  }
-
-  function syncSelectDisplay(wrap) {
-    var sel = wrap.querySelector("select");
-    var display = wrap.querySelector(".combo-display");
-    if (!sel || !display) return;
-    var label = selectLabelForValue(sel, sel.value);
-    var blank = !sel.value;
-    display.textContent = blank ? (sel.options[0] && sel.options[0].textContent) || "—" : label;
-    display.classList.toggle("is-placeholder", blank);
-  }
-
-  function comboOptsFromSelect(sel) {
-    return Array.prototype.map.call(sel.options, function (o) {
-      return {
-        value: o.value,
-        primary: o.textContent || o.value || "—",
-        secondary: "",
-        sku: "",
-        description: ""
-      };
-    });
-  }
-
-  function renderComboMenu(wrap, filterText) {
-    var menu = wrap.querySelector(".combo-menu");
-    if (!menu) return;
-    var sel = wrap.querySelector("select");
-    var inp = wrap.querySelector("input[data-combo]");
-    var q = String(filterText != null ? filterText : "").trim().toLowerCase();
-    var opts;
-    if (sel) {
-      opts = comboOptsFromSelect(sel);
-    } else if (inp) {
-      opts = comboOptionsFor(inp.getAttribute("data-combo"));
-    } else {
-      return;
-    }
-    if (q && inp) {
-      opts = opts.filter(function (o) {
-        return (o.primary + " " + (o.secondary || "") + " " + (o.sku || "")).toLowerCase().indexOf(q) >= 0;
-      });
-    }
-    if (!opts.length) {
-      menu.innerHTML = '<div class="combo-empty">' +
-        (inp ? "No matches — keep typing a custom value" : "No options") + "</div>";
-      return;
-    }
-    var current = sel ? sel.value : (inp ? inp.value : "");
-    menu.innerHTML = opts.map(function (o) {
-      var active = String(o.value) === String(current);
-      return '<button type="button" class="combo-item' + (active ? " active" : "") + '" data-value="' +
-        escapeHtml(o.value) + '" data-sku="' + escapeHtml(o.sku || "") + '" data-desc="' +
-        escapeHtml(o.description || "") + '">' +
-        '<span class="primary">' + escapeHtml(o.primary) + "</span>" +
-        (o.secondary ? '<span class="secondary">' + escapeHtml(o.secondary) + "</span>" : "") +
-        "</button>";
-    }).join("");
-    if (!menu.querySelector(".combo-item.active")) {
-      var first = menu.querySelector(".combo-item");
-      if (first) first.classList.add("active");
-    }
-  }
-
-  function openCombo(wrap, filterText) {
-    if (!wrap) return;
-    if (activeCombo && activeCombo !== wrap) closeCombo(activeCombo);
-    // Show full list on open; only filter when filterText is explicitly passed (typing)
-    renderComboMenu(wrap, filterText != null ? filterText : "");
-    wrap.classList.add("open");
-    wrap.classList.remove("drop-up");
-    var rect = wrap.getBoundingClientRect();
-    if (rect.bottom + 300 > window.innerHeight && rect.top > 300) {
-      wrap.classList.add("drop-up");
-    }
-    activeCombo = wrap;
-    var menu = wrap.querySelector(".combo-menu");
-    var active = menu && menu.querySelector(".combo-item.active");
-    if (active) {
-      try { active.scrollIntoView({ block: "nearest" }); } catch (e) {}
-    }
-  }
-
-  function pickComboItem(wrap, btn) {
-    if (!wrap || !btn) return;
-    var inp = wrap.querySelector("input[data-combo]");
-    var sel = wrap.querySelector("select");
-    var val = btn.getAttribute("data-value") || "";
-
-    if (sel) {
-      sel.value = val;
-      syncSelectDisplay(wrap);
-      closeCombo(wrap);
-      sel.dispatchEvent(new Event("input", { bubbles: true }));
-      sel.dispatchEvent(new Event("change", { bubbles: true }));
-      var display = wrap.querySelector(".combo-display");
-      if (display) display.focus();
-      return;
-    }
-
-    if (!inp) return;
-    var listId = inp.getAttribute("data-combo");
-    if (listId === "lov-commodity" && inp.getAttribute("data-k") === "sku") {
-      val = btn.getAttribute("data-sku") || val;
-    } else if (listId === "lov-commodity" && inp.getAttribute("data-k") === "productSku") {
-      val = btn.getAttribute("data-sku") || val;
-    } else if (listId === "lov-commodity" &&
-      (inp.getAttribute("data-k") === "description" || inp.getAttribute("data-k") === "productDescription")) {
-      val = btn.getAttribute("data-desc") || val;
-    }
-    inp.value = val;
-    closeCombo(wrap);
-    inp.dispatchEvent(new Event("input", { bubbles: true }));
-    inp.dispatchEvent(new Event("change", { bubbles: true }));
-    inp.focus();
-  }
-
-  function wireComboMenu(wrap, menu) {
-    menu.addEventListener("mousedown", function (e) {
-      var btn = e.target.closest(".combo-item");
-      if (!btn) return;
-      e.preventDefault();
-      pickComboItem(wrap, btn);
-    });
-    // Keep wheel / trackpad scroll inside the menu (don't close or scroll the page)
-    menu.addEventListener("wheel", function (e) {
-      var el = menu;
-      var delta = e.deltaY;
-      var atTop = el.scrollTop <= 0;
-      var atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-      if ((delta < 0 && atTop) || (delta > 0 && atBottom)) {
-        // still allow scroll inside; only stop page scroll when menu can move
-      }
-      e.stopPropagation();
-    }, { passive: true });
-  }
-
-  function handleComboKeydown(wrap, menu, e) {
-    var items = Array.prototype.slice.call(menu.querySelectorAll(".combo-item"));
-    var cur = menu.querySelector(".combo-item.active");
-    var idx = items.indexOf(cur);
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      if (!wrap.classList.contains("open")) { openCombo(wrap); return; }
-      if (cur) cur.classList.remove("active");
-      var next = items[Math.min(items.length - 1, Math.max(0, idx) + 1)] || items[0];
-      if (next) { next.classList.add("active"); next.scrollIntoView({ block: "nearest" }); }
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      if (cur) cur.classList.remove("active");
-      var prev = items[Math.max(0, idx - 1)] || items[0];
-      if (prev) { prev.classList.add("active"); prev.scrollIntoView({ block: "nearest" }); }
-    } else if (e.key === "Enter" && wrap.classList.contains("open") && cur) {
-      e.preventDefault();
-      pickComboItem(wrap, cur);
-    } else if (e.key === "Escape") {
-      closeCombo(wrap);
-    }
-  }
-
-  /** Chrome ignores autocomplete=off on address-like fields and covers our picker. */
-  function guardAgainstBrowserAutofill(inp) {
-    if (!inp || inp.getAttribute("data-af-guard") === "1") return;
-    inp.setAttribute("data-af-guard", "1");
-    // Non-standard token — Chrome won't treat as address/country autofill
-    inp.setAttribute("autocomplete", "one-time-code");
-    inp.setAttribute("autocapitalize", "off");
-    inp.setAttribute("autocorrect", "off");
-    inp.setAttribute("spellcheck", "false");
-    inp.setAttribute("data-lpignore", "true"); // LastPass
-    inp.setAttribute("data-1p-ignore", "true"); // 1Password
-    inp.setAttribute("data-bwignore", "true"); // Bitwarden
-    // Readonly until focus — stops Chrome address overlay from opening on click
-    inp.setAttribute("readonly", "readonly");
-    inp.addEventListener("focus", function () {
-      setTimeout(function () { inp.removeAttribute("readonly"); }, 40);
-    });
-  }
-
-  function enhanceCombos(root) {
-    (root || document).querySelectorAll("input[data-combo], input[list]").forEach(function (inp) {
-      var listId = inp.getAttribute("data-combo") || inp.getAttribute("list");
-      if (!listId) return;
-      if (inp.getAttribute("list")) {
-        inp.removeAttribute("list");
-        inp.setAttribute("data-combo", listId);
-      }
-      guardAgainstBrowserAutofill(inp);
-      if (inp.closest(".combo")) return;
-
-      var wrap = document.createElement("div");
-      wrap.className = "combo";
-      inp.parentNode.insertBefore(wrap, inp);
-      wrap.appendChild(inp);
-
-      var chev = document.createElement("span");
-      chev.className = "combo-chevron";
-      chev.setAttribute("aria-hidden", "true");
-      chev.textContent = "▾";
-      wrap.appendChild(chev);
-
-      var menu = document.createElement("div");
-      menu.className = "combo-menu";
-      menu.setAttribute("role", "listbox");
-      wrap.appendChild(menu);
-      wireComboMenu(wrap, menu);
-
-      inp.addEventListener("focus", function () { openCombo(wrap); });
-      inp.addEventListener("click", function () { openCombo(wrap); });
-      inp.addEventListener("input", function () {
-        // Filter only while typing
-        openCombo(wrap, inp.value);
-      });
-      inp.addEventListener("keydown", function (e) {
-        handleComboKeydown(wrap, menu, e);
-      });
-    });
-  }
-
-  function enhanceSelects(root) {
-    (root || document).querySelectorAll("select").forEach(function (sel) {
-      if (sel.closest(".combo")) return;
-      if (sel.getAttribute("data-skip-combo") === "1") return;
-
-      var wrap = document.createElement("div");
-      wrap.className = "combo combo-select";
-      sel.parentNode.insertBefore(wrap, sel);
-      wrap.appendChild(sel);
-      sel.classList.add("combo-native");
-
-      var display = document.createElement("button");
-      display.type = "button";
-      display.className = "combo-display";
-      display.setAttribute("aria-haspopup", "listbox");
-      wrap.insertBefore(display, sel);
-
-      var chev = document.createElement("span");
-      chev.className = "combo-chevron";
-      chev.setAttribute("aria-hidden", "true");
-      chev.textContent = "▾";
-      wrap.appendChild(chev);
-
-      var menu = document.createElement("div");
-      menu.className = "combo-menu";
-      menu.setAttribute("role", "listbox");
-      wrap.appendChild(menu);
-      wireComboMenu(wrap, menu);
-
-      syncSelectDisplay(wrap);
-
-      display.addEventListener("click", function (e) {
-        e.preventDefault();
-        if (wrap.classList.contains("open")) closeCombo(wrap);
-        else openCombo(wrap);
-      });
-      display.addEventListener("keydown", function (e) {
-        handleComboKeydown(wrap, menu, e);
-      });
-      sel.addEventListener("change", function () { syncSelectDisplay(wrap); });
-    });
-  }
-
-  function enhanceAllPickers(root) {
-    enhanceCombos(root);
-    enhanceSelects(root);
-  }
-
-  document.addEventListener("mousedown", function (e) {
-    if (activeCombo && !activeCombo.contains(e.target)) closeAllCombos();
-  });
-  // Close on page scroll, but NOT when scrolling inside the open menu
-  document.addEventListener("scroll", function (e) {
-    if (!activeCombo) return;
-    if (e.target && activeCombo.contains(e.target)) return;
-    closeAllCombos();
-  }, true);
-
-  function selectOpts(list, selected, includeBlank) {
-    var html = includeBlank !== false ? '<option value="">—</option>' : "";
-    list.forEach(function (opt) {
-      var v = typeof opt === "string" ? opt : opt.id;
-      var label = typeof opt === "string" ? opt : opt.label;
-      html += '<option value="' + escapeHtml(v) + '"' +
-        (String(selected) === String(v) ? " selected" : "") + ">" +
-        escapeHtml(label) + "</option>";
-    });
-    return html;
-  }
-
-  function asList(val) {
-    if (Array.isArray(val)) return val.map(String);
-    if (val == null || val === "") return [];
-    return String(val).split(/[;,|]/).map(function (x) { return x.trim(); }).filter(Boolean);
-  }
-
-  function renderCheckGroup(containerId, options, selected, dataAttr) {
-    var el = document.getElementById(containerId);
-    if (!el) return;
-    var set = {};
-    asList(selected).forEach(function (x) { set[x] = true; set[x.toLowerCase()] = true; });
-    el.innerHTML = options.map(function (opt) {
-      var id = typeof opt === "string" ? opt : opt.id;
-      var label = typeof opt === "string" ? opt : opt.label;
-      var checked = set[id] || set[String(id).toLowerCase()] ? " checked" : "";
-      return '<label><input type="checkbox" ' + dataAttr + '="' + escapeHtml(id) + '"' + checked + " />" +
-        escapeHtml(label) + "</label>";
-    }).join("");
-  }
-
-  function readCheckGroup(containerId, dataAttr) {
-    var el = document.getElementById(containerId);
-    if (!el) return [];
-    return Array.prototype.map.call(
-      el.querySelectorAll('input[type="checkbox"][' + dataAttr + ']:checked'),
-      function (inp) { return inp.getAttribute(dataAttr); }
-    );
-  }
-
-  var CUST_CSV_HEADERS = [
-    "name", "email", "country",
-    "shipTo", "consignee", "consigneeAddress", "consigneeCountry",
-    "notifyParty", "notifyAddress", "notifyContact", "pod",
-    "paymentTerms", "incoterms", "freightMarking",
-    "productSku", "productDescription", "quantity", "unit", "unitPrice", "hsCode",
-    "isfRequired", "fdaRegistrationNo", "importerOfRecord", "consigneeNumber", "isfSendToEmail",
-    "forwarder", "blPath", "requiredDocPack", "customerCiDifferent"
-  ];
-
-  var PROD_CSV_HEADERS = [
-    "sku", "description", "unit", "typicalQty", "unitPrice", "hsCode"
-  ];
-
-  /**
-   * Core ask: for each form TraceRoot fills, which source document/email
-   * does Export use today? (not just “can you send a sample”)
-   */
-  var FORM_SOURCE_PHASES = [
-    { id: "order", title: "Order & commercial", blurb: "PI, loading date, commercial invoice" },
-    { id: "load", title: "Loading & customs", blurb: "Gate pass, customs invoice, FI request, fumigation" },
-    { id: "bl", title: "Bill of lading", blurb: "Draft B/L / BL FORMAT you fill" },
-    { id: "final", title: "Final docs & customer", blurb: "Packing list, e-COO, ISF, customer pack" },
-    { id: "close", title: "Bank & after sail", blurb: "Bank covering letter, vessel update, payment / AR" }
-  ];
-
-  /**
-   * Cards = forms TraceRoot fills (system + Export/Production in the portal).
-   * External inbound docs (CRO, OBL, GD, …) are not cards — they may still
-   * appear as *sources* you look at when filling a TraceRoot form.
-   */
-  var FORM_SOURCE_STEPS = [
-    {
-      id: "pi", phase: "order", sno: "PI",
-      title: "PI",
-      fills: "Buyer, qty, prices, terms, packing, product lines",
-      typical: ["proforma_pdf", "sales_pi_email"],
-      sources: [
-        { id: "proforma_pdf", tag: "doc", label: "Proforma invoice PDF from Sales" },
-        { id: "pi_blank_template", tag: "doc", label: "Blank / master PI template" },
-        { id: "sales_pi_email", tag: "email", label: "Sales email that attaches the PI" },
-        { id: "pi_amend_email", tag: "email", label: "Sales amendment / price-change email" }
-      ]
-    },
-    {
-      id: "loading_date", phase: "order", sno: "Load date",
-      title: "Estimated loading date",
-      fills: "Loading date that drives deadlines",
-      typical: ["loading_date_email"],
-      sources: [
-        { id: "loading_date_email", tag: "email", label: "Sales / factory loading-date message" },
-        { id: "loading_date_whatsapp", tag: "email", label: "WhatsApp / chat with loading date" },
-        { id: "cro_pdf", tag: "doc", label: "Taken from CRO (no separate message)" }
-      ]
-    },
-    {
-      id: "commercial_invoice", phase: "order", sno: "CI",
-      title: "Commercial invoice",
-      fills: "Header, consignee, lines, weights, pallet type",
-      typical: ["final_pi", "cro_pdf"],
-      sources: [
-        { id: "final_pi", tag: "doc", label: "Final approved PI" },
-        { id: "cro_pdf", tag: "doc", label: "CRO (vessel / POL)" },
-        { id: "ci_template", tag: "doc", label: "CI Word / Excel template" },
-        { id: "sap_screen", tag: "note", label: "Typed directly in SAP today" }
-      ]
-    },
-    {
-      id: "gate_pass", phase: "load", sno: "Gate",
-      title: "Gate pass / container details",
-      fills: "Container, seal, packages, qty, net/gross weight",
-      typical: ["gate_pass", "container_whatsapp"],
-      sources: [
-        { id: "gate_pass", tag: "doc", label: "Factory outward gate pass" },
-        { id: "container_whatsapp", tag: "email", label: "WhatsApp with container #" },
-        { id: "container_email", tag: "email", label: "Email with container #" },
-        { id: "production_typed", tag: "note", label: "Typed by Production in TraceRoot only" }
-      ]
-    },
-    {
-      id: "customs_invoice", phase: "load", sno: "Customs inv",
-      title: "Customs invoice",
-      fills: "Packages, weights, values, marks for customs / bank",
-      typical: ["final_pi", "gate_pass", "customs_template"],
-      sources: [
-        { id: "final_pi", tag: "doc", label: "Final PI" },
-        { id: "gate_pass", tag: "doc", label: "Gate pass" },
-        { id: "customs_template", tag: "doc", label: "Customs invoice template (Excel / PDF)" },
-        { id: "commercial_invoice", tag: "doc", label: "Commercial invoice (same layout)" }
-      ]
-    },
-    {
-      id: "fi_request", phase: "load", sno: "FI",
-      title: "FI request",
-      fills: "Bank, IBAN, amounts for FI / FIA request",
-      typical: ["fi_request_xlsx", "bank_send_email"],
-      sources: [
-        { id: "fi_request_xlsx", tag: "doc", label: "HBL FI REQUEST Excel template" },
-        { id: "customs_invoice", tag: "doc", label: "Customs invoice (for amounts)" },
-        { id: "bank_send_email", tag: "email", label: "Email sending FI form to bank" },
-        { id: "bank_amend_email", tag: "email", label: "Bank “correct and resend” email" },
-        { id: "psw_fia", tag: "note", label: "FIA # later read from PSW" }
-      ]
-    },
-    {
-      id: "fumigation", phase: "load", sno: "Fumigation",
-      title: "Fumigation request / affidavit",
-      fills: "Affidavit / request for fumigator (wood pallets only)",
-      typical: [],
-      optional: true,
-      sources: [
-        { id: "not_applicable", tag: "note", label: "Not applicable (non-wood only)" },
-        { id: "affidavit", tag: "doc", label: "Per-shipment affidavit template" },
-        { id: "customs_inv", tag: "doc", label: "Customs invoice (wood marking)" },
-        { id: "fumigator_email", tag: "email", label: "Email to fumigator" }
-      ]
-    },
-    {
-      id: "draft_bl", phase: "bl", sno: "Draft BL",
-      title: "Draft B/L (BL FORMAT)",
-      fills: "BL fields before you send to the forwarder",
-      typical: ["gd_packet", "bl_format"],
-      sources: [
-        { id: "gd_packet", tag: "doc", label: "GD packet (customs inv + CRO + FIA + GD)" },
-        { id: "bl_format", tag: "doc", label: "BL FORMAT Word template (manual forwarders — see Partners)" },
-        { id: "checking_copy_email", tag: "email", label: "Checking-copy email / PDF (sample from your team)" },
-        { id: "approve_email", tag: "email", label: "Your “Approved” / correction reply" },
-        { id: "forwarder_portal", tag: "note", label: "Gama portal (Seagold) — see Partners" }
-      ]
-    },
-    {
-      id: "packing_list", phase: "final", sno: "PL",
-      title: "Packing list",
-      fills: "Packages, weights, marks",
-      typical: ["gate_pass", "packing_template"],
-      sources: [
-        { id: "gate_pass", tag: "doc", label: "Gate pass" },
-        { id: "obl", tag: "doc", label: "OBL / HBL (for refs)" },
-        { id: "packing_template", tag: "doc", label: "Packing list template" },
-        { id: "ci_revision", tag: "doc", label: "Commercial / customs invoice for dates & PI #" }
-      ]
-    },
-    {
-      id: "ecoo", phase: "final", sno: "e-COO",
-      title: "e-COO",
-      fills: "Certificate of origin fields",
-      typical: ["ecoo_psw"],
-      sources: [
-        { id: "obl", tag: "doc", label: "OBL / HBL (for refs)" },
-        { id: "ecoo_psw", tag: "doc", label: "e-COO PDF from PSW (sample)" },
-        { id: "vgm", tag: "doc", label: "VGM form (if filed with e-COO)" },
-        { id: "psw_portal", tag: "note", label: "Filed in PSW via TraceRoot / portal" }
-      ]
-    },
-    {
-      id: "isf", phase: "final", sno: "ISF",
-      title: "ISF",
-      fills: "ISF parties, B/L, vessel, container, HTS — US only",
-      typical: ["obl", "isf_sheet", "customer_master"],
-      sources: [
-        { id: "not_us", tag: "note", label: "Not used (no US buyers)" },
-        { id: "isf_sheet", tag: "doc", label: "Flexport ISF Excel template" },
-        { id: "obl", tag: "doc", label: "OBL / HBL" },
-        { id: "vessel_forwarder", tag: "email", label: "Forwarder vessel / voyage update" },
-        { id: "customer_master", tag: "note", label: "Customer master (IOR, consignee #, FDA)" },
-        { id: "isf_send_email", tag: "email", label: "Email sending ISF to customer / agent" }
-      ]
-    },
-    {
-      id: "customer_pack", phase: "final", sno: "Cust pack",
-      title: "Customer document pack",
-      fills: "Assemble and send the buyer’s document pack",
-      typical: ["doc_bank", "pack_send_email"],
-      sources: [
-        { id: "doc_bank", tag: "doc", label: "Docs already on the shipment (CI, PL, OBL, e-COO, …)" },
-        { id: "customer_ci_layout", tag: "doc", label: "Customer-specific CI layout (if different)" },
-        { id: "pack_send_email", tag: "email", label: "Email template sending the pack" },
-        { id: "pack_amend_email", tag: "email", label: "Customer amendment request email" }
-      ]
-    },
-    {
-      id: "bank_covering_letter", phase: "close", sno: "Bank set",
-      title: "Bank covering letter / physical set",
-      fills: "Covering letter + print checklist for the bank",
-      typical: ["covering_letter", "ci", "packing_list", "obl_scan", "gd"],
-      sources: [
-        { id: "covering_letter", tag: "doc", label: "Covering letter template" },
-        { id: "ci", tag: "doc", label: "Commercial invoice" },
-        { id: "packing_list", tag: "doc", label: "Packing list" },
-        { id: "obl_scan", tag: "doc", label: "OBL scan" },
-        { id: "gd", tag: "doc", label: "GD" }
-      ]
-    },
-    {
-      id: "vessel_update", phase: "close", sno: "Vessel",
-      title: "Vessel / ETA update",
-      fills: "Sail / ETA message to the customer",
-      typical: ["forwarder_eta_email"],
-      sources: [
-        { id: "carrier_portal", tag: "note", label: "Carrier tracking website / portal" },
-        { id: "forwarder_eta_email", tag: "email", label: "Forwarder sailed / ETA email" },
-        { id: "customer_eta_email", tag: "email", label: "Your ETA email template to customer" }
-      ]
-    },
-    {
-      id: "payment_ar", phase: "close", sno: "AR",
-      title: "Payment / AR",
-      fills: "Payment reminders and bank confirm replies",
-      typical: ["bank_payment_email", "bank_confirm_reply"],
-      sources: [
-        { id: "ar_reminder_email", tag: "email", label: "Payment reminder template" },
-        { id: "bank_payment_email", tag: "email", label: "Bank payment-advice email" },
-        { id: "bank_confirm_reply", tag: "email", label: "Your reply confirming invoice / GD / partial" },
-        { id: "remittance", tag: "doc", label: "Customer remittance advice" }
-      ]
-    }
-  ];
-
-  /** Drop external-inbound cards and old combined ids (v3). */
-  var FORM_SOURCE_OBSOLETE = [
-    "cro", "obl", "gd", "clearing_pack",
-    "cro_loading", "ci_sap", "gate", "customs_fia", "bl", "ecoo_old",
-    "bank_docs", "vessel_ar"
-  ];
-
-  /** Old combined card ids → new form cards (for drafts saved before the split). */
-  var FORM_SOURCE_LEGACY = {
-    cro_loading: ["cro", "loading_date"],
-    ci_sap: ["commercial_invoice"],
-    gate: ["gate_pass"],
-    customs_fia: ["customs_invoice", "fi_request"],
-    bl: ["draft_bl", "obl"],
-    ecoo: ["packing_list", "ecoo"],
-    bank_docs: ["bank_covering_letter"],
-    vessel_ar: ["vessel_update", "payment_ar"],
-    gd: ["clearing_pack", "gd"]
-  };
-
-  var openSourceStepId = "pi";
-
-  function emptyFormSource() {
-    return { sources: [], canSendSample: false, otherSource: "", notes: "" };
-  }
-
-  function stepIsAnswered(stepId) {
-    var fs = state.formSources && state.formSources[stepId];
-    if (!fs) return false;
-    return (fs.sources && fs.sources.length > 0) || !!(fs.otherSource && fs.otherSource.trim());
-  }
-
-  function updateSrcProgress() {
-    var total = FORM_SOURCE_STEPS.length;
-    var done = FORM_SOURCE_STEPS.filter(function (s) { return stepIsAnswered(s.id); }).length;
-    var countEl = document.getElementById("srcProgressCount");
-    var totalEl = document.getElementById("srcProgressTotal");
-    var bar = document.getElementById("srcProgressBar");
-    if (countEl) countEl.textContent = String(done);
-    if (totalEl) totalEl.textContent = String(total);
-    if (bar) bar.style.width = Math.round((done / total) * 100) + "%";
-  }
-
-  var emptyCustomer = function () {
+  function defaultState() {
     return {
-      name: "", email: "", country: "",
-      shipTo: "", consignee: "", consigneeAddress: "", consigneeCountry: "",
-      notifyParty: "", notifyAddress: "", notifyContact: "", pod: "",
-      paymentTerms: "", incoterms: "", freightMarking: "",
-      productSku: "", productDescription: "", quantity: "", unit: "", unitPrice: "", hsCode: "",
-      isfRequired: "", fdaRegistrationNo: "", importerOfRecord: "", consigneeNumber: "", isfSendToEmail: "",
-      forwarder: "", blPath: "", requiredDocPack: "", customerCiDifferent: ""
+      version: 2,
+      kind: "agro-hub-masters",
+      updatedAt: null,
+      company: {
+        legalName: "",
+        addressLine1: "",
+        addressLine2: "",
+        city: "",
+        postalCode: "",
+        country: "Pakistan",
+        contactPhone: "",
+        contactEmail: "",
+        fdaRegistrationNo: "",
+        ntn: "",
+        defaultPortOfLoading: "Karachi Port"
+      },
+      banks: [
+        { id: uid("bank"), bankName: "Dubai Islamic Bank", iban: "", currency: "USD", isDefault: true }
+      ],
+      lovs: {
+        payment_terms: [
+          { code: "CAD_ADV_100", label: "100% CAD Advance" },
+          { code: "CAD", label: "CAD" },
+          { code: "ADV", label: "ADV" },
+          { code: "NET30", label: "Net 30" },
+          { code: "NET45", label: "Net 45" },
+          { code: "NET60", label: "Net 60" }
+        ],
+        incoterms: [
+          { code: "FOB", label: "FOB - Free On Board" },
+          { code: "CFR", label: "CFR - Cost & Freight" },
+          { code: "CIF", label: "CIF - Cost Insurance & Freight" }
+        ],
+        port_of_loading: [
+          { code: "KHI", label: "Karachi Port" },
+          { code: "PQ", label: "Port Qasim" }
+        ],
+        port_of_destination: [
+          { code: "JAX", label: "JACKSONVILLE, U.S.A." },
+          { code: "NYC", label: "NEW YORK, U.S.A." }
+        ],
+        packaging: [
+          { code: "25KG_BAG", label: "25 kg bags" },
+          { code: "50KG_BAG", label: "50 kg bags" },
+          { code: "BULK_KG", label: "Bulk (kg)" }
+        ],
+        pallet_type: [
+          { code: "WOOD", label: "Wooden pallets" },
+          { code: "PLASTIC", label: "Plastic / other" }
+        ]
+      },
+      products: [],
+      customers: [],
+      forwarders: [
+        { id: "seagold", name: "Seagold", email: "", phone: "", blPath: "portal", notes: "" },
+        { id: "gama", name: "Gama", email: "", phone: "", blPath: "portal", notes: "" }
+      ],
+      sampleChecks: { docs: {}, emails: {} }
     };
-  };
+  }
 
-  var emptyForwarder = function () {
-    return {
-      name: "",
-      contact: "",
-      blPath: "", // "manual" | "gama"
-      canSendBlTemplate: false,
-      blTemplateNotes: "",
-      gamaFieldsNotes: "",
-      canSendScreenRecording: false,
-      canSendCheckingCopy: false,
-      checkingCopyNotes: "",
-      notes: ""
-    };
-  };
-
-  var defaultForwarders = function () {
-    var seagold = emptyForwarder();
-    seagold.name = "Seagold";
-    seagold.blPath = "gama";
-    return [seagold, emptyForwarder()];
-  };
-
-  var emptyIsfParty = function (role) {
-    return {
-      role: role || "other",
-      roleLabel: "",
-      name: "",
-      street: "",
-      city: "",
-      state: "",
-      postalCode: "",
-      country: "",
-      contact: "",
-      fdaRegistration: "",
-      sameAsShipper: false
-    };
-  };
-
-  var defaultIsfParties = function () {
-    return [
-      emptyIsfParty("seller"),
-      emptyIsfParty("manufacturer"),
-      emptyIsfParty("consolidator"),
-      emptyIsfParty("stuffing")
-    ];
-  };
-
-  var ISF_ROLE_LABELS = {
-    seller: "1. Seller",
-    manufacturer: "2. Manufacturer",
-    consolidator: "5. Consolidator",
-    stuffing: "6. Stuffing location",
-    other: "Other"
-  };
-
-  var state = {
-    version: 1,
-    kind: KIND,
-    workspace: "",
-    company: {},
-    isfParties: [],
-    banks: [],
-    contacts: {},
-    partners: { forwarders: defaultForwarders() },
-    defaults: {},
-    customers: [emptyCustomer()],
-    products: [{ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" }],
-    formSources: {},
-    formSourcesVersion: 3,
-    documents: {}
-  };
-
+  var state = defaultState();
   var saveTimer = null;
-  var statusEl = document.getElementById("saveStatus");
-  var wsInput = document.getElementById("workspaceName");
 
-  function slugify(s) {
-    return String(s || "default").trim().toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || "default";
-  }
-  function storageKey() {
-    return STORAGE_PREFIX + slugify(wsInput && wsInput.value);
-  }
+  function $(sel, root) { return (root || document).querySelector(sel); }
+  function $all(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+
   function setStatus(msg, ok) {
-    statusEl.textContent = msg;
-    statusEl.classList.toggle("ok", !!ok);
-  }
-
-  function getByPath(obj, path) {
-    return path.split(".").reduce(function (o, k) {
-      return o == null ? undefined : o[k];
-    }, obj);
-  }
-  function setByPath(obj, path, val) {
-    var parts = path.split(".");
-    var cur = obj;
-    for (var i = 0; i < parts.length - 1; i++) {
-      if (!cur[parts[i]] || typeof cur[parts[i]] !== "object") cur[parts[i]] = {};
-      cur = cur[parts[i]];
-    }
-    cur[parts[parts.length - 1]] = val;
-  }
-
-  function collectFromDom() {
-    document.querySelectorAll("[data-path]").forEach(function (el) {
-      setByPath(state, el.getAttribute("data-path"), el.value);
-    });
-    if (!state.defaults) state.defaults = {};
-    state.defaults.documentsOnPi = readCheckGroup("piDocsChecks", "data-pidoc");
-    state.defaults.bankPrintSet = readCheckGroup("bankSetChecks", "data-bankdoc");
-    state.workspace = (wsInput && wsInput.value) || "";
-    state.kind = KIND;
-    state.version = 1;
-    state.savedAt = new Date().toISOString();
-  }
-
-  function applyPaths() {
-    fillLovSelects();
-    // Address-adjacent fields (street, postal, etc.) also trigger Chrome autofill
-    document.querySelectorAll(
-      '[data-path="company.street"], [data-path="company.state"], [data-path="company.postalCode"],' +
-      '[data-path="company.city"], [data-path="company.country"], [data-path="company.countryOfOrigin"]'
-    ).forEach(guardAgainstBrowserAutofill);
-    document.querySelectorAll("[data-path]").forEach(function (el) {
-      var v = getByPath(state, el.getAttribute("data-path"));
-      if (v == null) {
-        el.value = "";
-        return;
-      }
-      el.value = String(v);
-      // If saved value not in LOV, keep it visible by adding option
-      if (el.tagName === "SELECT" && el.value !== String(v) && String(v)) {
-        var o = document.createElement("option");
-        o.value = String(v);
-        o.textContent = String(v);
-        el.appendChild(o);
-        el.value = String(v);
-      }
-    });
-    renderCheckGroup("piDocsChecks", PI_DOC_OPTIONS, (state.defaults && state.defaults.documentsOnPi) || [], "data-pidoc");
-    renderCheckGroup("bankSetChecks", BANK_SET_OPTIONS, (state.defaults && state.defaults.bankPrintSet) || [], "data-bankdoc");
+    var el = $("#saveStatus");
+    el.textContent = msg;
+    el.classList.toggle("ok", !!ok);
   }
 
   function persist() {
+    state.updatedAt = new Date().toISOString();
     try {
-      collectFromDom();
-      localStorage.setItem(storageKey(), JSON.stringify(state));
-      if (wsInput && wsInput.value) localStorage.setItem(LAST_WS_KEY, wsInput.value);
-      setStatus("Saved · " + new Date().toLocaleTimeString(), true);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      setStatus("Saved", true);
     } catch (e) {
-      setStatus("Could not save", false);
+      setStatus("Save failed", false);
     }
   }
+
   function scheduleSave() {
-    setStatus("Unsaved…", false);
+    setStatus("Saving…", false);
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(persist, 600);
+    saveTimer = setTimeout(persist, 250);
   }
 
-  function loadDraft() {
+  function load() {
     try {
-      var raw = localStorage.getItem(storageKey());
-      if (!raw) {
-        setStatus("Nothing saved yet", false);
-        renderAll();
-        return;
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      var parsed = JSON.parse(raw);
+      if (parsed && parsed.kind === "agro-hub-masters") {
+        state = Object.assign(defaultState(), parsed);
+        state.lovs = Object.assign(defaultState().lovs, parsed.lovs || {});
+        state.company = Object.assign(defaultState().company, parsed.company || {});
+        state.sampleChecks = Object.assign({ docs: {}, emails: {} }, parsed.sampleChecks || {});
       }
-      var data = JSON.parse(raw);
-      state = Object.assign(state, data);
-      if (!state.customers || !state.customers.length) state.customers = [emptyCustomer()];
-      if (!state.products || !state.products.length) {
-        state.products = [{ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" }];
-      }
-      if (!state.banks) state.banks = [];
-      if (!state.documents) state.documents = {};
-      if (!state.formSources) state.formSources = {};
-      ensureIsfParties();
-      ensurePartners();
-      ensureFormSources();
-      renderAll();
-      setStatus("Restored draft", true);
-    } catch (e) {
-      setStatus("Could not restore", false);
-      renderAll();
-    }
+    } catch (e) { /* ignore */ }
   }
 
-  /* ---- tabs ---- */
-  document.querySelectorAll(".tabs button").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      var id = btn.getAttribute("data-tab");
-      document.querySelectorAll(".tabs button").forEach(function (b) {
-        b.setAttribute("aria-selected", b === btn ? "true" : "false");
-      });
-      document.querySelectorAll(".panel").forEach(function (p) {
-        p.classList.toggle("active", p.id === "panel-" + id);
-      });
-      if (id === "send") renderSamplePack();
+  function goStep(id) {
+    STEPS.forEach(function (s) {
+      var btn = $('.steps button[data-step="' + s + '"]');
+      var panel = $('#panel-' + s);
+      var on = s === id;
+      if (btn) btn.setAttribute("aria-selected", on ? "true" : "false");
+      if (panel) panel.classList.toggle("active", on);
     });
-  });
+    if (id === "products") renderProducts();
+    if (id === "customers") renderCustomers();
+    if (id === "samples") renderSamples();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
-  /* ---- ISF parties ---- */
-  function ensureIsfParties() {
-    if (!state.isfParties) state.isfParties = [];
-    // Migrate legacy free-text fields from older drafts
-    var c = state.company || {};
-    if (!state.isfParties.length && (c.isfSeller || c.isfManufacturer || c.isfConsolidator || c.isfStuffing)) {
-      state.isfParties = defaultIsfParties();
-      if (c.isfSeller) {
-        state.isfParties[0].name = c.isfSeller;
-        if (/same as shipper/i.test(c.isfSeller)) state.isfParties[0].sameAsShipper = true;
-      }
-      if (c.isfManufacturer) {
-        state.isfParties[1].name = c.isfManufacturer;
-        if (/same as shipper/i.test(c.isfManufacturer)) state.isfParties[1].sameAsShipper = true;
-      }
-      if (c.isfConsolidator) state.isfParties[2].name = c.isfConsolidator;
-      if (c.isfStuffing) state.isfParties[3].name = c.isfStuffing;
-      delete c.isfSeller;
-      delete c.isfManufacturer;
-      delete c.isfConsolidator;
-      delete c.isfStuffing;
-    }
-    // Leave empty by default — user adds parties only if they file ISF.
-    // Collapse old drafts that only had the four blank starter rows.
-    if (state.isfParties.length === 4) {
-      var allBlank = state.isfParties.every(function (p) {
-        return !p.name && !p.street && !p.city && !p.contact && !p.fdaRegistration && !p.sameAsShipper;
+  /* ---------- Company ---------- */
+  function renderCompany() {
+    var c = state.company;
+    var fields = [
+      ["legalName", "Legal name", true],
+      ["addressLine1", "Address line 1", true],
+      ["addressLine2", "Address line 2", false],
+      ["city", "City", false],
+      ["postalCode", "Postal / zip", false],
+      ["country", "Country", false],
+      ["contactPhone", "Contact phone", false],
+      ["contactEmail", "Contact email", false],
+      ["fdaRegistrationNo", "FDA registration no.", false],
+      ["ntn", "NTN", false],
+      ["defaultPortOfLoading", "Default port of loading", false]
+    ];
+    var html = fields.map(function (f) {
+      var full = f[0] === "addressLine1" || f[0] === "addressLine2" ? " full" : "";
+      return '<label class="field' + full + '">' + f[1] +
+        '<input data-company="' + f[0] + '" value="' + esc(c[f[0]] || "") + '" /></label>';
+    }).join("");
+    $("#companyForm").innerHTML = html;
+    $all("[data-company]").forEach(function (inp) {
+      inp.addEventListener("input", function () {
+        state.company[inp.getAttribute("data-company")] = inp.value;
+        scheduleSave();
       });
-      if (allBlank) state.isfParties = [];
-    }
-  }
-
-  function shipperSnapshot() {
-    collectFromDom();
-    var c = state.company || {};
-    return {
-      name: c.legalName || "",
-      street: c.street || "",
-      city: c.city || "",
-      state: c.state || "",
-      postalCode: c.postalCode || "",
-      country: c.country || "",
-      contact: c.shipperContact || ""
-    };
-  }
-
-  function applyShipperToParty(p) {
-    var s = shipperSnapshot();
-    p.name = s.name;
-    p.street = s.street;
-    p.city = s.city;
-    p.state = s.state;
-    p.postalCode = s.postalCode;
-    p.country = s.country;
-    p.contact = s.contact;
-  }
-
-  function renderIsfParties() {
-    ensureIsfParties();
-    var root = document.getElementById("isfPartiesList");
-    root.innerHTML = "";
-    if (!state.isfParties.length) {
-      root.innerHTML = '<p class="pack-empty">No ISF parties yet — skip if you don’t ship to the US, or add parties below.</p>';
-      return;
-    }
-    state.isfParties.forEach(function (p, i) {
-      var card = document.createElement("div");
-      card.className = "cust-card";
-      var roleOpts = ["seller", "manufacturer", "consolidator", "stuffing", "other"]
-        .map(function (r) {
-          return '<option value="' + r + '"' + (p.role === r ? " selected" : "") + ">" +
-            ISF_ROLE_LABELS[r] + "</option>";
-        })
-        .join("");
-      var disabled = p.sameAsShipper ? " disabled" : "";
-      card.innerHTML =
-        '<div class="head"><strong>ISF party ' + (i + 1) + '</strong>' +
-        '<button type="button" class="rm" data-rm-isf="' + i + '">Remove</button></div>' +
-        '<div class="grid">' +
-        '<label class="field">Role<select data-isf="' + i + '" data-k="role">' + roleOpts + "</select></label>" +
-        '<label class="field">Custom role label (if Other)<input data-isf="' + i + '" data-k="roleLabel" placeholder="e.g. Factory 2" /></label>' +
-        '<label class="field full" style="flex-direction:row;align-items:center;gap:8px;font-weight:500">' +
-        '<input type="checkbox" data-isf="' + i + '" data-k="sameAsShipper" ' + (p.sameAsShipper ? "checked" : "") + " />" +
-        "Same as shipper (copy from company block above)</label>" +
-        '<label class="field full">Name<input data-isf="' + i + '" data-k="name"' + disabled + " /></label>" +
-        '<label class="field full">Street / building<input data-isf="' + i + '" data-k="street"' + disabled + " /></label>" +
-        '<label class="field">City<input data-isf="' + i + '" data-k="city"' + disabled + " /></label>" +
-        '<label class="field">State / province<input data-isf="' + i + '" data-k="state"' + disabled + " /></label>" +
-        '<label class="field">Postal code<input data-isf="' + i + '" data-k="postalCode"' + disabled + " /></label>" +
-        '<label class="field">Country<input data-isf="' + i + '" data-k="country" data-combo="lov-country" placeholder="Pick or type" autocomplete="off"' + disabled + " /></label>" +
-        '<label class="field">Contact (tel / email)<input data-isf="' + i + '" data-k="contact"' + disabled + " /></label>" +
-        '<label class="field">FDA registration (if any)<input data-isf="' + i + '" data-k="fdaRegistration"' + disabled + " /></label>" +
-        "</div>";
-      root.appendChild(card);
-      card.querySelectorAll("input[data-isf], select[data-isf]").forEach(function (el) {
-        var k = el.getAttribute("data-k");
-        if (el.type === "checkbox") return;
-        el.value = p[k] != null ? String(p[k]) : "";
-      });
-      enhanceAllPickers(card);
     });
+    renderBanks();
   }
 
-  document.getElementById("addIsfParty").addEventListener("click", function () {
-    collectFromDom();
-    ensureIsfParties();
-    state.isfParties.push(emptyIsfParty("other"));
-    renderIsfParties();
-    scheduleSave();
-  });
-  document.getElementById("addIsfUsual").addEventListener("click", function () {
-    collectFromDom();
-    ensureIsfParties();
-    var have = {};
-    state.isfParties.forEach(function (p) { if (p.role) have[p.role] = true; });
-    ["seller", "manufacturer", "consolidator", "stuffing"].forEach(function (role) {
-      if (!have[role]) state.isfParties.push(emptyIsfParty(role));
-    });
-    renderIsfParties();
-    scheduleSave();
-  });
-
-  document.getElementById("isfPartiesList").addEventListener("input", function (e) {
-    var t = e.target;
-    if (!t.getAttribute("data-isf")) return;
-    var i = +t.getAttribute("data-isf");
-    var k = t.getAttribute("data-k");
-    if (t.type === "checkbox") return;
-    state.isfParties[i][k] = t.value;
-    scheduleSave();
-  });
-
-  document.getElementById("isfPartiesList").addEventListener("change", function (e) {
-    var t = e.target;
-    if (!t.getAttribute("data-isf")) return;
-    var i = +t.getAttribute("data-isf");
-    var k = t.getAttribute("data-k");
-    if (t.type === "checkbox" && k === "sameAsShipper") {
-      state.isfParties[i].sameAsShipper = !!t.checked;
-      if (t.checked) applyShipperToParty(state.isfParties[i]);
-      renderIsfParties();
-      scheduleSave();
-      return;
-    }
-    state.isfParties[i][k] = t.value;
-    scheduleSave();
-  });
-
-  document.getElementById("isfPartiesList").addEventListener("click", function (e) {
-    if (!e.target.hasAttribute("data-rm-isf")) return;
-    collectFromDom();
-    state.isfParties.splice(+e.target.getAttribute("data-rm-isf"), 1);
-    renderIsfParties();
-    scheduleSave();
-  });
-
-  /* ---- forwarders / partners ---- */
-  function ensurePartners() {
-    if (!state.partners) state.partners = {};
-    var p = state.partners;
-    if (!Array.isArray(p.forwarders)) p.forwarders = [];
-    // Migrate legacy single-forwarder fields
-    if (!p.forwarders.length && (p.forwarderName || p.forwarderContact || p.forwarderBlPath)) {
-      var f = emptyForwarder();
-      f.name = p.forwarderName || "";
-      f.contact = p.forwarderContact || "";
-      var path = p.forwarderBlPath || "";
-      if (path === "portal") f.blPath = /seagold/i.test(f.name) ? "gama" : "manual";
-      else if (path === "manual" || path === "gama") f.blPath = path;
-      else if (path === "mixed") f.blPath = "manual";
-      f.notes = p.forwarderNotes || "";
-      p.forwarders = [f];
-      delete p.forwarderName;
-      delete p.forwarderContact;
-      delete p.forwarderBlPath;
-      delete p.forwarderNotes;
-    }
-    if (!p.forwarders.length) p.forwarders = defaultForwarders();
-  }
-
-  function renderForwarders() {
-    ensurePartners();
-    var root = document.getElementById("forwardersList");
-    root.innerHTML = "";
-    state.partners.forwarders.forEach(function (f, i) {
-      var card = document.createElement("div");
-      card.className = "cust-card";
-      var isGama = f.blPath === "gama";
-      var isManual = f.blPath === "manual";
-      var pathAsk = "";
-      if (isManual) {
-        pathAsk =
-          '<div class="csv-box" style="grid-column:1/-1;margin:0">' +
-          "<strong>Manual B/L path</strong> — Agro Hub fills this forwarder’s BL template and emails it." +
-          '<label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;font-weight:500;cursor:pointer">' +
-          '<input type="checkbox" data-fwd="' + i + '" data-k="canSendBlTemplate"' +
-          (f.canSendBlTemplate ? " checked" : "") + " />" +
-          "We can send a sample of their blank / filled BL FORMAT template (Word / PDF)</label>" +
-          '<label class="field full" style="margin-top:6px">Template notes' +
-          '<input data-fwd="' + i + '" data-k="blTemplateNotes" placeholder="e.g. filename, which fields you type vs leave blank…" value="' +
-          escapeHtml(f.blTemplateNotes || "") + '" /></label>' +
-          "</div>";
-      } else if (isGama) {
-        pathAsk =
-          '<div class="csv-box" style="grid-column:1/-1;margin:0;background:#e8f4fc;border-left-color:var(--cyan)">' +
-          "<strong>Gama portal (Seagold)</strong> — no Word template; you key data into Gama." +
-          '<label class="field full" style="margin-top:8px">What do you fill in the portal?' +
-          '<textarea data-fwd="' + i + '" data-k="gamaFieldsNotes" rows="3" placeholder="List fields / screens: shipper, consignee, notify, cargo, container, freight…">' +
-          escapeHtml(f.gamaFieldsNotes || "") + "</textarea></label>" +
-          '<label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;font-weight:500;cursor:pointer">' +
-          '<input type="checkbox" data-fwd="' + i + '" data-k="canSendScreenRecording"' +
-          (f.canSendScreenRecording ? " checked" : "") + " />" +
-          "We can send a screen recording / screenshots of a typical Gama booking entry</label>" +
-          "</div>";
-      } else {
-        pathAsk =
-          '<p class="hint" style="grid-column:1/-1;margin:0">Pick a B/L path to see what sample we need for this forwarder.</p>';
-      }
-
-      card.innerHTML =
-        '<div class="head"><strong>Forwarder ' + (i + 1) +
-        (f.name ? " — " + escapeHtml(f.name) : "") +
-        '</strong><button type="button" class="rm" data-rm-fwd="' + i + '">Remove</button></div>' +
-        '<div class="grid">' +
-        '<label class="field">Name' +
-        '<input data-fwd="' + i + '" data-k="name" data-combo="lov-fwd-known" placeholder="e.g. Seagold" autocomplete="off" /></label>' +
-        '<label class="field">Email / phone' +
-        '<input data-fwd="' + i + '" data-k="contact" /></label>' +
-        '<label class="field">B/L path' +
-        '<select data-fwd="' + i + '" data-k="blPath">' +
-        '<option value="">—</option>' +
-        '<option value="gama">Gama portal (Seagold only)</option>' +
-        '<option value="manual">Manual — BL template + email</option>' +
-        "</select></label>" +
-        pathAsk +
-        '<div class="field full" style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff">' +
-        "<strong style=\"font-size:13px\">Checking copy sample</strong>" +
-        '<p class="hint" style="margin:4px 0 8px">Example checking-copy email / PDF from this forwarder or line (what you receive before you Approve).</p>' +
-        '<label style="display:flex;gap:8px;align-items:flex-start;font-weight:500;cursor:pointer">' +
-        '<input type="checkbox" data-fwd="' + i + '" data-k="canSendCheckingCopy"' +
-        (f.canSendCheckingCopy ? " checked" : "") + " />" +
-        "We can send a checking-copy sample for this forwarder</label>" +
-        '<label class="field full" style="margin-top:6px">Checking-copy notes' +
-        '<input data-fwd="' + i + '" data-k="checkingCopyNotes" placeholder="e.g. from Seagold / MSC line; redacted OK" /></label>' +
-        "</div>" +
-        '<label class="field full">Other notes' +
-        '<input data-fwd="' + i + '" data-k="notes" placeholder="Optional" /></label>' +
-        "</div>";
-      root.appendChild(card);
-      card.querySelectorAll("[data-fwd]").forEach(function (el) {
-        var k = el.getAttribute("data-k");
-        if (el.type === "checkbox") return;
-        if (el.tagName === "SELECT") {
-          el.value = f[k] || "";
-          return;
-        }
-        if (el.tagName === "TEXTAREA") {
-          el.value = f[k] || "";
-          return;
-        }
-        el.value = f[k] || "";
-      });
-      enhanceAllPickers(card);
-    });
-  }
-
-  document.getElementById("addForwarder").addEventListener("click", function () {
-    collectFromDom();
-    ensurePartners();
-    state.partners.forwarders.push(emptyForwarder());
-    renderForwarders();
-    scheduleSave();
-  });
-  document.getElementById("forwardersList").addEventListener("click", function (e) {
-    if (!e.target.hasAttribute("data-rm-fwd")) return;
-    collectFromDom();
-    ensurePartners();
-    state.partners.forwarders.splice(+e.target.getAttribute("data-rm-fwd"), 1);
-    if (!state.partners.forwarders.length) state.partners.forwarders = [emptyForwarder()];
-    renderForwarders();
-    scheduleSave();
-  });
-  document.getElementById("forwardersList").addEventListener("input", function (e) {
-    var t = e.target;
-    if (!t.getAttribute("data-fwd")) return;
-    ensurePartners();
-    var i = +t.getAttribute("data-fwd");
-    var k = t.getAttribute("data-k");
-    if (t.type === "checkbox") return;
-    state.partners.forwarders[i][k] = t.value;
-    if (document.getElementById("panel-send").classList.contains("active")) renderSamplePack();
-    scheduleSave();
-  });
-  document.getElementById("forwardersList").addEventListener("change", function (e) {
-    var t = e.target;
-    if (!t.getAttribute("data-fwd")) return;
-    ensurePartners();
-    var i = +t.getAttribute("data-fwd");
-    var k = t.getAttribute("data-k");
-    if (t.type === "checkbox") {
-      state.partners.forwarders[i][k] = !!t.checked;
-      scheduleSave();
-      return;
-    }
-    state.partners.forwarders[i][k] = t.value;
-    if (k === "blPath" || k === "name") {
-      // Seagold hint: auto-pick Gama when name looks like Seagold
-      if (k === "name" && /seagold/i.test(t.value) && !state.partners.forwarders[i].blPath) {
-        state.partners.forwarders[i].blPath = "gama";
-      }
-      renderForwarders();
-    }
-    if (document.getElementById("panel-send").classList.contains("active")) renderSamplePack();
-    scheduleSave();
-  });
-
-  /* ---- banks ---- */
   function renderBanks() {
-    var tbody = document.querySelector("#banksTable tbody");
-    tbody.innerHTML = "";
-    if (!state.banks.length) state.banks.push({ name: "", iban: "", contact: "", notes: "" });
-    state.banks.forEach(function (b, i) {
-      var tr = document.createElement("tr");
-      var nameInLov = LOV.bank.indexOf(b.name) >= 0;
-      tr.innerHTML =
-        '<td><select data-bank="' + i + '" data-k="name">' + selectOpts(LOV.bank, nameInLov ? b.name : (b.name ? "Other" : ""), true) + "</select>" +
-        (nameInLov || !b.name ? "" : "") +
-        '<input data-bank="' + i + '" data-k="nameOther" placeholder="If Other, type bank name" style="margin-top:4px' +
-        (b.name && !nameInLov ? "" : ";display:none") + '" value="' + escapeHtml(!nameInLov ? b.name : "") + '" /></td>' +
-        '<td><input data-bank="' + i + '" data-k="iban" /></td>' +
-        '<td><input data-bank="' + i + '" data-k="contact" /></td>' +
-        '<td><input data-bank="' + i + '" data-k="notes" /></td>' +
-        '<td><button type="button" class="rm-bank" data-i="' + i + '">Remove</button></td>';
-      tbody.appendChild(tr);
-      tr.querySelectorAll("input, select").forEach(function (inp) {
-        var k = inp.getAttribute("data-k");
-        if (k === "nameOther") return;
-        if (k === "name") {
-          inp.value = nameInLov ? b.name : (b.name ? "Other" : "");
-          return;
-        }
-        if (inp.tagName !== "SELECT") inp.value = b[k] || "";
+    var root = $("#banksList");
+    if (!state.banks.length) {
+      root.innerHTML = '<div class="empty">No banks yet</div>';
+      return;
+    }
+    root.innerHTML = state.banks.map(function (b, i) {
+      return '<div class="row-card" data-bank-i="' + i + '">' +
+        '<header><strong>Bank ' + (i + 1) + '</strong>' +
+        '<button type="button" class="danger" data-del-bank="' + i + '">Remove</button></header>' +
+        '<div class="grid">' +
+        '<label class="field">Bank name<input data-bank-f="bankName" value="' + esc(b.bankName) + '" /></label>' +
+        '<label class="field">IBAN<input data-bank-f="iban" value="' + esc(b.iban) + '" /></label>' +
+        '<label class="field">Currency<input data-bank-f="currency" value="' + esc(b.currency) + '" /></label>' +
+        '<label class="field">Default<select data-bank-f="isDefault">' +
+        '<option value="true"' + (b.isDefault ? " selected" : "") + '>TRUE</option>' +
+        '<option value="false"' + (!b.isDefault ? " selected" : "") + '>FALSE</option>' +
+        '</select></label></div></div>';
+    }).join("");
+    $all("[data-del-bank]", root).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        state.banks.splice(+btn.getAttribute("data-del-bank"), 1);
+        renderBanks(); scheduleSave();
       });
-      var other = tr.querySelector('[data-k="nameOther"]');
-      if (other) other.style.display = (!nameInLov && b.name) || (tr.querySelector('[data-k="name"]').value === "Other") ? "" : "none";
-      enhanceAllPickers(tr);
+    });
+    $all(".row-card", root).forEach(function (card) {
+      var i = +card.getAttribute("data-bank-i");
+      $all("[data-bank-f]", card).forEach(function (el) {
+        el.addEventListener("change", function () {
+          var f = el.getAttribute("data-bank-f");
+          var v = el.value;
+          if (f === "isDefault") {
+            var on = v === "true";
+            if (on) state.banks.forEach(function (b, j) { b.isDefault = j === i; });
+            else state.banks[i].isDefault = false;
+            renderBanks();
+          } else {
+            state.banks[i][f] = v;
+          }
+          scheduleSave();
+        });
+        if (el.tagName === "INPUT") {
+          el.addEventListener("input", function () {
+            state.banks[i][el.getAttribute("data-bank-f")] = el.value;
+            scheduleSave();
+          });
+        }
+      });
     });
   }
 
-  document.getElementById("addBank").addEventListener("click", function () {
-    collectFromDom();
-    state.banks.push({ name: "", iban: "", contact: "", notes: "" });
-    renderBanks();
-    scheduleSave();
-  });
-  document.querySelector("#banksTable").addEventListener("input", function (e) {
-    var t = e.target;
-    if (!t.getAttribute("data-bank")) return;
-    var i = +t.getAttribute("data-bank");
-    var k = t.getAttribute("data-k");
-    if (k === "nameOther") {
-      state.banks[i].name = t.value;
-      scheduleSave();
-      return;
-    }
-    state.banks[i][k] = t.value;
-    scheduleSave();
-  });
-  document.querySelector("#banksTable").addEventListener("change", function (e) {
-    var t = e.target;
-    if (!t.getAttribute("data-bank")) return;
-    var i = +t.getAttribute("data-bank");
-    var k = t.getAttribute("data-k");
-    if (k === "name") {
-      var cell = t.closest("td") || t.parentElement;
-      var other = cell.querySelector('[data-k="nameOther"]');
-      if (t.value === "Other") {
-        if (other) { other.style.display = ""; state.banks[i].name = other.value || ""; }
-      } else {
-        if (other) { other.style.display = "none"; other.value = ""; }
-        state.banks[i].name = t.value;
-      }
-      scheduleSave();
-      return;
-    }
-    state.banks[i][k] = t.value;
-    scheduleSave();
-  });
-  document.querySelector("#banksTable").addEventListener("click", function (e) {
-    if (!e.target.classList.contains("rm-bank")) return;
-    collectFromDom();
-    state.banks.splice(+e.target.getAttribute("data-i"), 1);
-    renderBanks();
-    scheduleSave();
-  });
+  /* ---------- LOVs ---------- */
+  var LOV_META = [
+    { key: "payment_terms", title: "Payment terms" },
+    { key: "incoterms", title: "Incoterms" },
+    { key: "port_of_loading", title: "Ports of loading" },
+    { key: "port_of_destination", title: "Ports of destination" },
+    { key: "packaging", title: "Packaging types" },
+    { key: "pallet_type", title: "Pallet types" }
+  ];
 
-  /* ---- customers ---- */
-  function packList(val) {
-    return asList(val);
+  function renderLovs() {
+    var root = $("#lovsRoot");
+    root.innerHTML = LOV_META.map(function (m) {
+      var rows = state.lovs[m.key] || [];
+      return '<div class="lov-block" data-lov="' + m.key + '">' +
+        "<h4>" + m.title + "</h4>" +
+        '<div class="lov-list">' + rows.map(function (r, i) {
+          return '<div class="lov-row" data-i="' + i + '">' +
+            '<input placeholder="code" data-f="code" value="' + esc(r.code) + '" />' +
+            '<input placeholder="label" data-f="label" value="' + esc(r.label) + '" />' +
+            '<button type="button" class="danger" data-del-lov="' + i + '">×</button></div>';
+        }).join("") + "</div>" +
+        '<button type="button" class="sec" data-add-lov="' + m.key + '">+ Add</button></div>';
+    }).join("");
+
+    $all("[data-add-lov]", root).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var k = btn.getAttribute("data-add-lov");
+        state.lovs[k] = state.lovs[k] || [];
+        state.lovs[k].push({ code: "", label: "" });
+        renderLovs(); scheduleSave();
+      });
+    });
+    $all(".lov-block", root).forEach(function (block) {
+      var key = block.getAttribute("data-lov");
+      $all("[data-del-lov]", block).forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          state.lovs[key].splice(+btn.getAttribute("data-del-lov"), 1);
+          renderLovs(); scheduleSave();
+        });
+      });
+      $all(".lov-row", block).forEach(function (row) {
+        var i = +row.getAttribute("data-i");
+        $all("input", row).forEach(function (inp) {
+          inp.addEventListener("input", function () {
+            state.lovs[key][i][inp.getAttribute("data-f")] = inp.value;
+            scheduleSave();
+          });
+        });
+      });
+    });
   }
 
-  function packCheckHtml(i, selected) {
-    var set = {};
-    packList(selected).forEach(function (x) { set[x] = true; });
-    return PACK_DOC_OPTIONS.map(function (opt) {
-      return '<label><input type="checkbox" data-cust-pack="' + i + '" data-pack="' + opt.id + '"' +
-        (set[opt.id] ? " checked" : "") + " />" + escapeHtml(opt.label) + "</label>";
+  function packagingOptions() {
+    return (state.lovs.packaging || []).filter(function (p) { return p.code || p.label; });
+  }
+
+  function labelForPack(code) {
+    var p = packagingOptions().find(function (x) { return x.code === code; });
+    return p ? (p.label || p.code) : code;
+  }
+
+  /* ---------- Products ---------- */
+  function renderProducts() {
+    var packs = packagingOptions();
+    $("#packWarn").hidden = packs.length > 0;
+    var root = $("#productsList");
+    if (!state.products.length) {
+      root.innerHTML = '<div class="empty">No products yet — add your catalog here first</div>';
+      return;
+    }
+    root.innerHTML = state.products.map(function (p, i) {
+      var chips = packs.map(function (pk) {
+        var code = pk.code || pk.label;
+        var on = (p.packagingCodes || []).indexOf(code) >= 0;
+        return '<label class="chip' + (on ? " on" : "") + '">' +
+          '<input type="checkbox" data-pack="' + esc(code) + '"' + (on ? " checked" : "") + " />" +
+          esc(pk.label || pk.code) + "</label>";
+      }).join("") || '<span class="meta">No packaging LOVs yet</span>';
+      return '<div class="row-card" data-prod-i="' + i + '">' +
+        '<header><div><strong>' + esc(p.name || "Untitled product") + '</strong>' +
+        '<div class="meta">' + esc(p.sku || "no sku") +
+        (p.hsCode ? " · HS " + esc(p.hsCode) : "") + "</div></div>" +
+        '<button type="button" class="danger" data-del-prod="' + i + '">Remove</button></header>' +
+        '<div class="grid">' +
+        '<label class="field">SKU / id<input data-pf="sku" value="' + esc(p.sku) + '" /></label>' +
+        '<label class="field">HS code<input data-pf="hsCode" value="' + esc(p.hsCode) + '" /></label>' +
+        '<label class="field full">Product name / description<input data-pf="name" value="' + esc(p.name) + '" /></label>' +
+        '<label class="field">Unit of measurement<input data-pf="uom" value="' + esc(p.uom) + '" placeholder="KG / bag / LB" /></label>' +
+        '<label class="field">Notes<input data-pf="notes" value="' + esc(p.notes || "") + '" /></label>' +
+        '</div>' +
+        '<label class="field" style="margin-top:10px">Packaging types for this product' +
+        '<span class="why">Select all that apply — customers will see these when they pick this product</span></label>' +
+        '<div class="chip-grid">' + chips + "</div></div>";
+    }).join("");
+
+    $all("[data-del-prod]", root).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var sku = state.products[+btn.getAttribute("data-del-prod")].sku;
+        state.products.splice(+btn.getAttribute("data-del-prod"), 1);
+        state.customers.forEach(function (c) {
+          c.productSkus = (c.productSkus || []).filter(function (s) { return s !== sku; });
+          if (c.productPackaging) delete c.productPackaging[sku];
+        });
+        renderProducts(); scheduleSave();
+      });
+    });
+    $all(".row-card", root).forEach(function (card) {
+      var i = +card.getAttribute("data-prod-i");
+      $all("[data-pf]", card).forEach(function (inp) {
+        inp.addEventListener("input", function () {
+          var f = inp.getAttribute("data-pf");
+          var oldSku = state.products[i].sku;
+          state.products[i][f] = inp.value;
+          if (f === "sku" && oldSku !== inp.value) {
+            state.customers.forEach(function (c) {
+              c.productSkus = (c.productSkus || []).map(function (s) {
+                return s === oldSku ? inp.value : s;
+              });
+              if (c.productPackaging && c.productPackaging[oldSku]) {
+                c.productPackaging[inp.value] = c.productPackaging[oldSku];
+                delete c.productPackaging[oldSku];
+              }
+            });
+            var title = $("header strong", card);
+            if (title && f === "name") title.textContent = inp.value || "Untitled product";
+          }
+          if (f === "name") {
+            var t = $("header strong", card);
+            if (t) t.textContent = inp.value || "Untitled product";
+          }
+          scheduleSave();
+        });
+      });
+      $all("[data-pack]", card).forEach(function (cb) {
+        cb.addEventListener("change", function () {
+          var code = cb.getAttribute("data-pack");
+          var list = state.products[i].packagingCodes || (state.products[i].packagingCodes = []);
+          var ix = list.indexOf(code);
+          if (cb.checked && ix < 0) list.push(code);
+          if (!cb.checked && ix >= 0) list.splice(ix, 1);
+          cb.closest(".chip").classList.toggle("on", cb.checked);
+          scheduleSave();
+        });
+      });
+    });
+  }
+
+  /* ---------- Customers ---------- */
+  function optionHtml(list, selected, labelFn) {
+    return (list || []).map(function (item) {
+      var val = typeof item === "string" ? item : (item.code || item.id || "");
+      var lab = labelFn ? labelFn(item) : (item.label || item.name || val);
+      return '<option value="' + esc(val) + '"' + (selected === val || selected === lab ? " selected" : "") + ">" +
+        esc(lab) + "</option>";
     }).join("");
   }
 
-  function syncPackFromCard(card, i) {
-    var ids = Array.prototype.map.call(
-      card.querySelectorAll('input[data-cust-pack="' + i + '"]:checked'),
-      function (inp) { return inp.getAttribute("data-pack"); }
-    );
-    state.customers[i].requiredDocPack = ids.join(", ");
-  }
-
-  function fieldSelect(k, label, list, selected, i) {
-    return '<label class="field">' + escapeHtml(label) +
-      '<select data-cust="' + i + '" data-k="' + k + '">' + selectOpts(list, selected, true) +
-      "</select></label>";
-  }
-
   function renderCustomers() {
-    var root = document.getElementById("customersList");
-    root.innerHTML = "";
-    state.customers.forEach(function (c, i) {
-      var card = document.createElement("div");
-      card.className = "cust-card";
-      card.innerHTML =
-        '<div class="head"><strong>Customer ' + (i + 1) +
-        (c.name ? " — " + escapeHtml(c.name) : "") +
-        '</strong><button type="button" class="rm" data-rm-cust="' + i + '">Remove</button></div>' +
-        '<div class="grid">' +
-        field("name", "Legal / buyer name", i) +
-        field("email", "Ops / docs email", i, "email") +
-        fieldList("country", "Country", "lov-country", i) +
-        '<div class="field full" style="margin:4px 0 0">' +
-        '<strong style="font-size:13px;color:var(--navy)">Where goods are delivered (on B/L &amp; invoices)</strong>' +
-        '<p class="hint" style="margin:4px 0 0">Consignee = who appears on the bill of lading as receiving the cargo. ' +
-        'Notify = who gets arrival notices (often the same company).</p></div>' +
-        '<label class="field full">Delivery name <span class="why">Optional short name for the destination, e.g. “Olde Foods — Ocala DC”. Leave blank if same as legal name.</span>' +
-        '<input data-cust="' + i + '" data-k="shipTo" placeholder="Same as legal name if blank" /></label>' +
-        '<label class="field full" style="flex-direction:row;align-items:flex-start;gap:8px;font-weight:500">' +
-        '<input type="checkbox" data-cust-action="copyConsignee" data-cust-i="' + i + '" style="margin-top:3px" />' +
-        '<span>Consignee is the same as the delivery name above <span style="font-weight:400;color:var(--muted)">(or legal name if delivery name is blank)</span></span></label>' +
-        field("consignee", "Consignee name (on B/L)", i) +
-        fieldFull("consigneeAddress", "Consignee full address", i) +
-        fieldList("consigneeCountry", "Consignee country", "lov-country", i) +
-        '<label class="field full" style="flex-direction:row;align-items:flex-start;gap:8px;font-weight:500">' +
-        '<input type="checkbox" data-cust-action="copyNotify" data-cust-i="' + i + '" style="margin-top:3px" />' +
-        '<span>Notify party is the same as consignee</span></label>' +
-        field("notifyParty", "Notify party name", i) +
-        fieldFull("notifyAddress", "Notify address", i) +
-        field("notifyContact", "Notify contact (email / phone)", i) +
-        fieldList("pod", "Usual POD", "lov-pod", i) +
-        fieldList("paymentTerms", "Payment terms", "lov-payment", i) +
-        fieldList("incoterms", "Incoterms", "lov-incoterms", i) +
-        fieldList("freightMarking", "Freight marking", "lov-freight", i) +
-        '<label class="field">Default SKU / commodity' +
-        '<input data-cust="' + i + '" data-k="productSku" data-combo="lov-commodity" placeholder="Pick commodity — HS fills in" autocomplete="off" />' +
-        '<span class="why">Commodity type only; add bag-size SKUs on Products</span></label>' +
-        '<label class="field">Default description' +
-        '<input data-cust="' + i + '" data-k="productDescription" data-combo="lov-commodity" placeholder="Pick or type commodity" autocomplete="off" />' +
-        '</label>' +
-        field("quantity", "Default qty", i) +
-        fieldList("unit", "Unit", "lov-unit", i) +
-        field("unitPrice", "Unit price", i) +
-        '<label class="field">HS code<span class="why">From commodity (editable)</span>' +
-        '<input data-cust="' + i + '" data-k="hsCode" class="mono" placeholder="Auto from commodity" /></label>' +
-        '<label class="field">ISF required?<select data-cust="' + i + '" data-k="isfRequired">' +
-        '<option value="">—</option><option value="yes">Yes</option><option value="no">No</option></select></label>' +
-        field("fdaRegistrationNo", "FDA registration", i) +
-        fieldFull("importerOfRecord", "Importer of record (name + EIN)", i) +
-        field("consigneeNumber", "Consignee number(s)", i) +
-        field("isfSendToEmail", "ISF send-to email", i, "email") +
-        '<label class="field">Forwarder for this customer' +
-        '<input data-cust="' + i + '" data-k="forwarder" data-combo="lov-forwarders" placeholder="Pick from Partners" autocomplete="off" /></label>' +
-        '<label class="field">B/L path<select data-cust="' + i + '" data-k="blPath">' +
-        '<option value="">—</option>' +
-        '<option value="gama">Gama portal (Seagold)</option>' +
-        '<option value="manual">Manual — fill BL template &amp; email</option>' +
-        '<option value="portal">Other portal</option></select></label>' +
-        '<label class="field">Customer CI vs bank CI<select data-cust="' + i + '" data-k="customerCiDifferent">' +
-        '<option value="">—</option><option value="same">Same</option><option value="different">Different — will attach sample</option></select></label>' +
-        '<div class="field full"><span style="font-size:12px;font-weight:600;color:var(--ink)">Documents in customer pack</span>' +
-        '<div class="check-grid">' + packCheckHtml(i, c.requiredDocPack) + "</div></div>" +
-        "</div>";
-      root.appendChild(card);
-      card.querySelectorAll("[data-cust]").forEach(function (el) {
-        var k = el.getAttribute("data-k");
-        if (el.tagName === "SELECT") {
-          if (c[k] != null && c[k] !== "") el.value = c[k];
-          return;
+    var root = $("#customersList");
+    if (!state.customers.length) {
+      root.innerHTML = '<div class="empty">No customers yet</div>';
+      return;
+    }
+    var pay = state.lovs.payment_terms || [];
+    var inco = state.lovs.incoterms || [];
+    var pods = state.lovs.port_of_destination || [];
+    var fwds = state.forwarders || [];
+
+    root.innerHTML = state.customers.map(function (c, i) {
+      var prodChips = state.products.map(function (p) {
+        if (!p.sku) return "";
+        var on = (c.productSkus || []).indexOf(p.sku) >= 0;
+        return '<label class="chip' + (on ? " on" : "") + '">' +
+          '<input type="checkbox" data-cprod="' + esc(p.sku) + '"' + (on ? " checked" : "") + " />" +
+          esc(p.name || p.sku) + "</label>";
+      }).join("") || '<span class="meta">Add products in step 3 first</span>';
+
+      var packBlocks = (c.productSkus || []).map(function (sku) {
+        var prod = state.products.find(function (p) { return p.sku === sku; });
+        if (!prod) return "";
+        var allowed = prod.packagingCodes || [];
+        if (!allowed.length) {
+          return '<div style="margin-top:8px"><strong style="font-size:12px;color:var(--ink)">' +
+            esc(prod.name || sku) + '</strong><div class="meta">No packaging on this product yet</div></div>';
         }
-        el.value = c[k] || "";
-      });
-      enhanceAllPickers(card);
-    });
-  }
-
-  function field(k, label, i, type) {
-    return '<label class="field">' + escapeHtml(label) +
-      '<input' + (type ? ' type="' + type + '"' : "") + ' data-cust="' + i + '" data-k="' + k + '" /></label>';
-  }
-  function fieldList(k, label, listId, i) {
-    return '<label class="field">' + escapeHtml(label) +
-      '<input data-cust="' + i + '" data-k="' + k + '" data-combo="' + listId +
-      '" placeholder="Pick or type" autocomplete="off" /></label>';
-  }
-  function fieldFull(k, label, i) {
-    return '<label class="field full">' + escapeHtml(label) +
-      '<input data-cust="' + i + '" data-k="' + k + '" /></label>';
-  }
-  function escapeHtml(s) {
-    return String(s || "").replace(/[&<>"']/g, function (ch) {
-      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch];
-    });
-  }
-
-  document.getElementById("addCustomer").addEventListener("click", function () {
-    collectFromDom();
-    state.customers.push(emptyCustomer());
-    renderCustomers();
-    scheduleSave();
-  });
-  function maybeFillCustomerCommodity(i, k, value) {
-    if (k !== "productSku" && k !== "productDescription") return false;
-    var hit = lookupCommodity(value);
-    if (!hit || !hit.hsCode) {
-      state.customers[i][k] = value;
-      return false;
-    }
-    applyCommodityToCustomer(state.customers[i], hit);
-    if (k === "productSku" && !hit.sku) state.customers[i].productSku = value;
-    if (k === "productDescription" && value && hit.description !== value) {
-      // keep typed description if keyword match only
-      if (!hit.sku) state.customers[i].productDescription = value;
-    }
-    renderCustomers();
-    scheduleSave();
-    return true;
-  }
-
-  document.getElementById("customersList").addEventListener("input", function (e) {
-    var t = e.target;
-    if (t.hasAttribute("data-cust-pack")) {
-      var i = +t.getAttribute("data-cust-pack");
-      syncPackFromCard(t.closest(".cust-card"), i);
-      scheduleSave();
-      return;
-    }
-    if (!t.getAttribute("data-cust")) return;
-    var ci = +t.getAttribute("data-cust");
-    var ck = t.getAttribute("data-k");
-    state.customers[ci][ck] = t.value;
-    scheduleSave();
-  });
-  document.getElementById("customersList").addEventListener("change", function (e) {
-    var t = e.target;
-    if (t.getAttribute("data-cust") && (t.getAttribute("data-k") === "productSku" || t.getAttribute("data-k") === "productDescription")) {
-      if (maybeFillCustomerCommodity(+t.getAttribute("data-cust"), t.getAttribute("data-k"), t.value)) return;
-    }
-    if (t.getAttribute("data-cust-action") === "copyConsignee") {
-      var i = +t.getAttribute("data-cust-i");
-      if (t.checked) {
-        var c = state.customers[i];
-        c.consignee = (c.shipTo || c.name || "").trim();
-        if (!c.consigneeCountry) c.consigneeCountry = c.country || "";
-        renderCustomers();
-        scheduleSave();
-      }
-      return;
-    }
-    if (t.getAttribute("data-cust-action") === "copyNotify") {
-      var j = +t.getAttribute("data-cust-i");
-      if (t.checked) {
-        var cu = state.customers[j];
-        cu.notifyParty = cu.consignee || "";
-        cu.notifyAddress = cu.consigneeAddress || "";
-        renderCustomers();
-        scheduleSave();
-      }
-      return;
-    }
-    if (t.hasAttribute("data-cust-pack")) {
-      syncPackFromCard(t.closest(".cust-card"), +t.getAttribute("data-cust-pack"));
-      scheduleSave();
-      return;
-    }
-    if (!t.getAttribute("data-cust")) return;
-    state.customers[+t.getAttribute("data-cust")][t.getAttribute("data-k")] = t.value;
-    scheduleSave();
-  });
-  document.getElementById("customersList").addEventListener("click", function (e) {
-    if (!e.target.hasAttribute("data-rm-cust")) return;
-    collectFromDom();
-    state.customers.splice(+e.target.getAttribute("data-rm-cust"), 1);
-    if (!state.customers.length) state.customers = [emptyCustomer()];
-    renderCustomers();
-    scheduleSave();
-  });
-
-  /* ---- products ---- */
-  function renderProducts() {
-    var tbody = document.querySelector("#productsTable tbody");
-    tbody.innerHTML = "";
-    state.products.forEach(function (p, i) {
-      var tr = document.createElement("tr");
-      tr.innerHTML =
-        '<td><input data-prod="' + i + '" data-k="sku" data-combo="lov-commodity" placeholder="SKU / commodity" autocomplete="off" /></td>' +
-        '<td><input data-prod="' + i + '" data-k="description" data-combo="lov-commodity" placeholder="Pick commodity" autocomplete="off" /></td>' +
-        '<td><input data-prod="' + i + '" data-k="unit" data-combo="lov-unit" placeholder="Pick or type" autocomplete="off" /></td>' +
-        '<td><input data-prod="' + i + '" data-k="typicalQty" /></td>' +
-        '<td><input data-prod="' + i + '" data-k="unitPrice" /></td>' +
-        '<td><input data-prod="' + i + '" data-k="hsCode" class="mono" placeholder="Auto" title="Filled from commodity; editable" /></td>' +
-        '<td><button type="button" data-rm-prod="' + i + '">Remove</button></td>';
-      tbody.appendChild(tr);
-      tr.querySelectorAll("input").forEach(function (inp) {
-        inp.value = p[inp.getAttribute("data-k")] || "";
-      });
-      enhanceAllPickers(tr);
-    });
-  }
-
-  function fillProductFromCommodity(i, fromKey, value) {
-    var p = state.products[i];
-    p[fromKey] = value;
-    var hit = lookupCommodity(value);
-    if (!hit || !hit.hsCode) {
-      // still try keyword on description after typing
-      return false;
-    }
-    applyCommodityToProduct(p, hit, false);
-    if (fromKey === "description" && !hit.sku) p.description = value;
-    if (fromKey === "sku" && value && !hit.sku) p.sku = value;
-    renderProducts();
-    scheduleSave();
-    return true;
-  }
-
-  document.getElementById("addProduct").addEventListener("click", function () {
-    collectFromDom();
-    state.products.push({ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" });
-    renderProducts();
-    scheduleSave();
-  });
-  document.querySelector("#productsTable").addEventListener("input", function (e) {
-    var t = e.target;
-    if (!t.getAttribute("data-prod")) return;
-    var i = +t.getAttribute("data-prod");
-    var k = t.getAttribute("data-k");
-    state.products[i][k] = t.value;
-    // Live HS fill while picking from datalist
-    if ((k === "sku" || k === "description") && lookupCommodity(t.value)) {
-      var hit = lookupCommodity(t.value);
-      if (hit && hit.hsCode && hit.hsCode !== state.products[i].hsCode) {
-        applyCommodityToProduct(state.products[i], hit, false);
-        var hsInp = t.closest("tr").querySelector('[data-k="hsCode"]');
-        var skuInp = t.closest("tr").querySelector('[data-k="sku"]');
-        var descInp = t.closest("tr").querySelector('[data-k="description"]');
-        var unitInp = t.closest("tr").querySelector('[data-k="unit"]');
-        var qtyInp = t.closest("tr").querySelector('[data-k="typicalQty"]');
-        var priceInp = t.closest("tr").querySelector('[data-k="unitPrice"]');
-        if (hsInp) hsInp.value = state.products[i].hsCode || "";
-        if (skuInp && state.products[i].sku) skuInp.value = state.products[i].sku;
-        if (descInp && state.products[i].description) descInp.value = state.products[i].description;
-        if (unitInp && state.products[i].unit) unitInp.value = state.products[i].unit;
-        if (qtyInp && state.products[i].typicalQty) qtyInp.value = state.products[i].typicalQty;
-        if (priceInp && state.products[i].unitPrice) priceInp.value = state.products[i].unitPrice;
-      }
-    }
-    scheduleSave();
-  });
-  document.querySelector("#productsTable").addEventListener("change", function (e) {
-    var t = e.target;
-    if (!t.getAttribute("data-prod")) return;
-    var i = +t.getAttribute("data-prod");
-    var k = t.getAttribute("data-k");
-    if (k === "sku" || k === "description") {
-      if (fillProductFromCommodity(i, k, t.value)) return;
-    }
-    state.products[i][k] = t.value;
-    scheduleSave();
-  });
-
-  document.getElementById("piDocsChecks").addEventListener("change", scheduleSave);
-  document.getElementById("bankSetChecks").addEventListener("change", scheduleSave);
-  document.querySelector("#productsTable").addEventListener("click", function (e) {
-    if (!e.target.hasAttribute("data-rm-prod")) return;
-    collectFromDom();
-    state.products.splice(+e.target.getAttribute("data-rm-prod"), 1);
-    if (!state.products.length) {
-      state.products = [{ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" }];
-    }
-    renderProducts();
-    scheduleSave();
-  });
-
-  /* ---- form sources by form ---- */
-  function mergeFormSourceInto(targetId, from) {
-    if (!from) return;
-    var fs = state.formSources[targetId];
-    if (!fs) return;
-    (from.sources || []).forEach(function (id) {
-      if (fs.sources.indexOf(id) < 0) fs.sources.push(id);
-    });
-    if (from.canSendSample) fs.canSendSample = true;
-    if (from.otherSource && !fs.otherSource) fs.otherSource = from.otherSource;
-    if (from.notes && !fs.notes) fs.notes = from.notes;
-  }
-
-  function splitSourcesByAllow(fromSources, allowIds) {
-    var allow = {};
-    (allowIds || []).forEach(function (id) { allow[id] = true; });
-    return (fromSources || []).filter(function (id) { return allow[id]; });
-  }
-
-  function ensureFormSources() {
-    if (!state.formSources) state.formSources = {};
-
-    // Migrate combined workflow cards → form-named cards (once)
-    if (!(state.formSourcesVersion >= 3)) {
-    (FORM_SOURCE_OBSOLETE || []).forEach(function (oid) {
-      if (state.formSources[oid]) delete state.formSources[oid];
-    });
-    Object.keys(FORM_SOURCE_LEGACY).forEach(function (oldId) {
-      var old = state.formSources[oldId];
-      if (!old) return;
-      var targets = FORM_SOURCE_LEGACY[oldId];
-      targets.forEach(function (tid) {
-        if (!state.formSources[tid]) state.formSources[tid] = emptyFormSource();
-      });
-      if (oldId === "customs_fia") {
-        state.formSources.customs_invoice.sources = splitSourcesByAllow(old.sources, [
-          "final_pi", "gate_pass", "customs_template", "commercial_invoice"
-        ]);
-        state.formSources.fi_request.sources = splitSourcesByAllow(old.sources, [
-          "fi_request_xlsx", "customs_invoice", "bank_send_email", "bank_amend_email", "psw_fia"
-        ]);
-        mergeFormSourceInto("customs_invoice", { canSendSample: old.canSendSample, otherSource: old.otherSource, notes: old.notes, sources: [] });
-        mergeFormSourceInto("fi_request", { canSendSample: old.canSendSample, sources: [] });
-      } else if (oldId === "cro_loading") {
-        state.formSources.cro.sources = splitSourcesByAllow(old.sources, [
-          "cro_pdf", "cro_forward_email", "forwarder_booking_email"
-        ]);
-        state.formSources.loading_date.sources = splitSourcesByAllow(old.sources, [
-          "loading_date_email", "loading_date_whatsapp", "cro_pdf"
-        ]);
-        mergeFormSourceInto("cro", { canSendSample: old.canSendSample, otherSource: old.otherSource, notes: old.notes, sources: [] });
-      } else if (oldId === "gd") {
-        // Old GD card mixed clearing pack + GD
-        state.formSources.clearing_pack.sources = splitSourcesByAllow(old.sources, [
-          "customs_inv", "cro_pdf", "fia_form", "clearing_email"
-        ]);
-        state.formSources.gd.sources = splitSourcesByAllow(old.sources, [
-          "gd_psw", "clearing_agent_email", "psw_portal"
-        ]);
-        if (!state.formSources.gd.sources.length && (old.sources || []).indexOf("gd_psw") >= 0) {
-          state.formSources.gd.sources = ["gd_psw"];
-        }
-        mergeFormSourceInto("clearing_pack", { canSendSample: old.canSendSample, otherSource: old.otherSource, notes: old.notes, sources: [] });
-      } else if (oldId === "bl") {
-        state.formSources.draft_bl.sources = splitSourcesByAllow(old.sources, [
-          "gd_packet", "bl_format", "checking_copy_email", "approve_email", "forwarder_portal"
-        ]);
-        state.formSources.obl.sources = splitSourcesByAllow(old.sources, [
-          "obl_scan", "forwarder_obl_email", "forwarder_portal"
-        ]);
-        mergeFormSourceInto("draft_bl", { canSendSample: old.canSendSample, otherSource: old.otherSource, notes: old.notes, sources: [] });
-      } else if (oldId === "ecoo") {
-        state.formSources.packing_list.sources = splitSourcesByAllow(old.sources, [
-          "gate_pass", "obl", "packing_template", "ci_revision"
-        ]);
-        // keep ecoo entry; filter its sources
-        var ecooOnly = splitSourcesByAllow(old.sources, ["ecoo_psw", "obl", "vgm", "psw_portal"]);
-        state.formSources.ecoo.sources = ecooOnly.length ? ecooOnly : (state.formSources.ecoo.sources || []);
-        mergeFormSourceInto("packing_list", { canSendSample: old.canSendSample, otherSource: old.otherSource, notes: old.notes, sources: [] });
-      } else if (oldId === "vessel_ar") {
-        state.formSources.vessel_update.sources = splitSourcesByAllow(old.sources, [
-          "carrier_portal", "forwarder_eta_email", "customer_eta_email"
-        ]);
-        state.formSources.payment_ar.sources = splitSourcesByAllow(old.sources, [
-          "ar_reminder_email", "bank_payment_email", "bank_confirm_reply", "remittance"
-        ]);
-        mergeFormSourceInto("vessel_update", { canSendSample: old.canSendSample, otherSource: old.otherSource, notes: old.notes, sources: [] });
-      } else {
-        targets.forEach(function (tid) { mergeFormSourceInto(tid, old); });
-      }
-      // Drop obsolete combined keys only (keep ids that are still real forms, e.g. gd, ecoo)
-      var stillAForm = FORM_SOURCE_STEPS.some(function (s) { return s.id === oldId; });
-      if (!stillAForm) delete state.formSources[oldId];
-    });
-    state.formSourcesVersion = 3;
-    }
-
-    FORM_SOURCE_STEPS.forEach(function (step) {
-      if (!state.formSources[step.id]) {
-        state.formSources[step.id] = emptyFormSource();
-      }
-      if (!Array.isArray(state.formSources[step.id].sources)) {
-        state.formSources[step.id].sources = [];
-      }
-    });
-    // Migrate legacy flat documents.* checkboxes → formSources where ids match
-    Object.keys(state.documents || {}).forEach(function (docId) {
-      if (!state.documents[docId] || docId === "extraNotes") return;
-      FORM_SOURCE_STEPS.forEach(function (step) {
-        var hit = step.sources.find(function (s) { return s.id === docId; });
-        if (!hit) return;
-        var fs = state.formSources[step.id];
-        if (fs.sources.indexOf(docId) < 0) fs.sources.push(docId);
-        fs.canSendSample = true;
-      });
-    });
-  }
-
-  function sourceLabel(step, srcId) {
-    var hit = step.sources.find(function (s) { return s.id === srcId; });
-    return hit ? hit.label : srcId;
-  }
-
-  function stepSummaryText(step, fs) {
-    if (!fs) return "Not answered yet";
-    var ids = fs.sources || [];
-    if (!ids.length && !(fs.otherSource && fs.otherSource.trim())) {
-      return "Not answered yet — click to open";
-    }
-    var labels = ids.slice(0, 2).map(function (id) { return sourceLabel(step, id); });
-    var extra = ids.length > 2 ? " +" + (ids.length - 2) + " more" : "";
-    if (fs.otherSource && fs.otherSource.trim()) {
-      labels.push(fs.otherSource.trim());
-    }
-    return labels.join(" · ") + extra;
-  }
-
-  function applyTypicalDefaults() {
-    ensureFormSources();
-    FORM_SOURCE_STEPS.forEach(function (step) {
-      var fs = state.formSources[step.id];
-      if (stepIsAnswered(step.id)) return;
-      if (step.typical && step.typical.length) {
-        fs.sources = step.typical.slice();
-      } else if (step.id === "fumigation") {
-        fs.sources = ["not_applicable"];
-        fs.notes = fs.notes || "Defaulted as N/A — change if you use wood pallets";
-      } else if (step.id === "isf") {
-        fs.sources = ["not_us"];
-        fs.notes = fs.notes || "Defaulted as not used — change if you ship to US";
-      }
-    });
-    var firstEmpty = FORM_SOURCE_STEPS.find(function (s) { return !stepIsAnswered(s.id); });
-    openSourceStepId = firstEmpty ? firstEmpty.id : FORM_SOURCE_STEPS[0].id;
-    renderDocs();
-    scheduleSave();
-    setStatus("Typical defaults applied — review each form", true);
-  }
-
-  function renderDocs() {
-    ensureFormSources();
-    var root = document.getElementById("docsList");
-    root.innerHTML = "";
-    if (!openSourceStepId || !FORM_SOURCE_STEPS.some(function (s) { return s.id === openSourceStepId; })) {
-      openSourceStepId = FORM_SOURCE_STEPS[0].id;
-    }
-
-    FORM_SOURCE_PHASES.forEach(function (phase) {
-      var steps = FORM_SOURCE_STEPS.filter(function (s) { return s.phase === phase.id; });
-      if (!steps.length) return;
-      var block = document.createElement("div");
-      block.className = "phase-block";
-      block.innerHTML =
-        "<h3>" + escapeHtml(phase.title) + "</h3>" +
-        '<p class="phase-sub">' + escapeHtml(phase.blurb) + "</p>";
-      root.appendChild(block);
-
-      steps.forEach(function (step) {
-        var fs = state.formSources[step.id] || emptyFormSource();
-        var selected = {};
-        (fs.sources || []).forEach(function (id) { selected[id] = true; });
-        var answered = stepIsAnswered(step.id);
-        var isOpen = openSourceStepId === step.id;
-        var card = document.createElement("div");
-        card.className = "source-step" + (isOpen ? " open" : "") + (answered ? " done" : "");
-        card.setAttribute("data-step", step.id);
-
-        var summary = stepSummaryText(step, fs);
-        var checks = step.sources.map(function (s) {
-          var tagClass = s.tag === "email" ? "tag-email" : s.tag === "note" ? "tag-note" : "tag-doc";
-          var tagLabel = s.tag === "email" ? "Email / chat" : s.tag === "note" ? "System" : "Document";
-          return '<label><input type="checkbox" data-src-step="' + step.id + '" data-src="' + s.id + '"' +
-            (selected[s.id] ? " checked" : "") + " />" +
-            '<span><span class="tag ' + tagClass + '">' + tagLabel + "</span>" +
-            escapeHtml(s.label) + "</span></label>";
+        var restricted = c.productPackaging && c.productPackaging[sku];
+        var selected = restricted || allowed.slice();
+        var chips = allowed.map(function (code) {
+          var on = selected.indexOf(code) >= 0;
+          return '<label class="chip' + (on ? " on" : "") + '">' +
+            '<input type="checkbox" data-cpack-sku="' + esc(sku) + '" data-cpack="' + esc(code) + '"' +
+            (on ? " checked" : "") + " />" + esc(labelForPack(code)) + "</label>";
         }).join("");
+        return '<div style="margin-top:10px">' +
+          '<label class="field">Packaging for <em>' + esc(prod.name || sku) + '</em>' +
+          '<span class="why">All product packs shown. Untick any this customer never uses.</span></label>' +
+          '<div class="chip-grid">' + chips + "</div></div>";
+      }).join("");
 
-        var stepIdx = FORM_SOURCE_STEPS.indexOf(step);
-        var hasNext = stepIdx < FORM_SOURCE_STEPS.length - 1;
-        var optNote = step.optional
-          ? '<p class="fills" style="margin-top:-4px">Optional — skip if this never applies.</p>'
-          : "";
+      return '<div class="row-card" data-cust-i="' + i + '">' +
+        '<header><div><strong>' + esc(c.name || "Untitled customer") + '</strong>' +
+        '<div class="meta">' + esc(c.id || "") + "</div></div>" +
+        '<button type="button" class="danger" data-del-cust="' + i + '">Remove</button></header>' +
+        '<div class="grid">' +
+        '<label class="field">Customer id<input data-cf="id" value="' + esc(c.id) + '" /></label>' +
+        '<label class="field">Name<input data-cf="name" value="' + esc(c.name) + '" /></label>' +
+        '<label class="field full">Street<input data-cf="addressStreet" value="' + esc(c.addressStreet) + '" /></label>' +
+        '<label class="field">City<input data-cf="addressCity" value="' + esc(c.addressCity) + '" /></label>' +
+        '<label class="field">Postal / zip<input data-cf="addressPostalCode" value="' + esc(c.addressPostalCode) + '" /></label>' +
+        '<label class="field">Country<input data-cf="addressCountry" value="' + esc(c.addressCountry) + '" /></label>' +
+        '<label class="field">Phone<input data-cf="contactPhone" value="' + esc(c.contactPhone) + '" /></label>' +
+        '<label class="field">Email<input data-cf="contactEmail" value="' + esc(c.contactEmail) + '" /></label>' +
+        '<label class="field">Phone 2<input data-cf="contactPhone2" value="' + esc(c.contactPhone2 || "") + '" /></label>' +
+        '<label class="field">Email 2<input data-cf="contactEmail2" value="' + esc(c.contactEmail2 || "") + '" /></label>' +
+        '<label class="field">FDA registration (importer)<input data-cf="fdaRegistrationNo" value="' + esc(c.fdaRegistrationNo || "") + '" /></label>' +
+        '<label class="field">Default port of destination<select data-cf="defaultPortOfDestination">' +
+        '<option value="">—</option>' + optionHtml(pods, c.defaultPortOfDestination, function (x) { return x.label; }) +
+        "</select></label>" +
+        '<label class="field">Payment terms<select data-cf="defaultPaymentTerms">' +
+        '<option value="">—</option>' + optionHtml(pay, c.defaultPaymentTerms, function (x) { return x.label; }) +
+        "</select></label>" +
+        '<label class="field">Incoterms<select data-cf="defaultIncoterms">' +
+        '<option value="">—</option>' + optionHtml(inco, c.defaultIncoterms, function (x) { return x.label; }) +
+        "</select></label>" +
+        '<label class="field">Default forwarder<select data-cf="defaultForwarderId">' +
+        '<option value="">—</option>' + optionHtml(fwds, c.defaultForwarderId, function (x) { return x.name + " (" + x.id + ")"; }) +
+        "</select></label>" +
+        '<label class="field">BL path<select data-cf="blPath">' +
+        '<option value="manual"' + (c.blPath === "manual" ? " selected" : "") + ">manual</option>" +
+        '<option value="portal"' + (c.blPath === "portal" ? " selected" : "") + ">portal</option>" +
+        "</select></label>" +
+        '<label class="field">ISF required<select data-cf="isfRequired">' +
+        '<option value="false"' + (c.isfRequired ? "" : " selected") + ">FALSE</option>" +
+        '<option value="true"' + (c.isfRequired ? " selected" : "") + ">TRUE</option>" +
+        "</select></label>" +
+        '<label class="field full">Default document pack<span class="why">e.g. bill_of_lading | packing_list | e_coo | customer_invoice</span>' +
+        '<input data-cf="defaultDocumentPack" value="' + esc(c.defaultDocumentPack || "") + '" /></label>' +
+        '<label class="field">Ship-to name<input data-cf="shipToName" value="' + esc(c.shipToName || "") + '" /></label>' +
+        '<label class="field">Ship-to address<input data-cf="shipToAddress" value="' + esc(c.shipToAddress || "") + '" /></label>' +
+        '<label class="field">Consignee name<input data-cf="consigneeName" value="' + esc(c.consigneeName || "") + '" /></label>' +
+        '<label class="field">Consignee address<input data-cf="consigneeAddress" value="' + esc(c.consigneeAddress || "") + '" /></label>' +
+        "</div>" +
+        '<label class="field" style="margin-top:12px">Products this customer buys</label>' +
+        '<div class="chip-grid">' + prodChips + "</div>" +
+        packBlocks +
+        "</div>";
+    }).join("");
 
-        card.innerHTML =
-          '<button type="button" class="step-toggle" data-src-toggle="' + step.id + '" aria-expanded="' + (isOpen ? "true" : "false") + '">' +
-          '<span class="step-no">' + escapeHtml(step.sno) + "</span>" +
-          '<span class="step-main">' +
-          '<span class="step-title">' + escapeHtml(step.title) + "</span>" +
-          '<span class="step-summary' + (answered ? " ok" : "") + '">' + escapeHtml(summary) + "</span>" +
-          "</span>" +
-          '<span class="chev" aria-hidden="true">▾</span>' +
-          "</button>" +
-          '<div class="step-body">' +
-          '<p class="fills"><strong>What this form covers:</strong> ' + escapeHtml(step.fills) + "</p>" +
-          optNote +
-          '<p class="ask-label">What do you use today? (tick all that apply)</p>' +
-          '<div class="check-grid">' + checks + "</div>" +
-          '<div class="grid" style="margin-top:8px">' +
-          '<label class="field full" style="flex-direction:row;align-items:center;gap:8px;font-weight:500">' +
-          '<input type="checkbox" data-src-sample="' + step.id + '"' +
-          (fs.canSendSample ? " checked" : "") + " />" +
-          "We can send a sample of the source(s) above</label>" +
-          '<label class="field full">Other source (if not listed)' +
-          '<input data-src-other="' + step.id + '" placeholder="e.g. shared Google Sheet, verbal from factory…" value="' +
-          escapeHtml(fs.otherSource || "") + '" /></label>' +
-          '<label class="field full">Notes for this form' +
-          '<input data-src-notes="' + step.id + '" placeholder="Optional" value="' +
-          escapeHtml(fs.notes || "") + '" /></label>' +
-          "</div>" +
-          '<div class="step-nav">' +
-          (hasNext
-            ? '<button type="button" class="pri" data-src-next="' + step.id + '">Next form</button>'
-            : '<button type="button" class="pri" data-src-done="1">Done — continue to customers</button>') +
-          '<button type="button" class="ghost" data-src-collapse="' + step.id + '" style="border-color:var(--line);color:var(--ink);background:#fff">Collapse</button>' +
-          "</div>" +
-          "</div>";
-        block.appendChild(card);
+    $all("[data-del-cust]", root).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        state.customers.splice(+btn.getAttribute("data-del-cust"), 1);
+        renderCustomers(); scheduleSave();
       });
     });
 
-    updateSrcProgress();
-  }
+    $all(".row-card", root).forEach(function (card) {
+      var i = +card.getAttribute("data-cust-i");
+      var c = state.customers[i];
 
-  function openNextStep(fromId) {
-    var idx = FORM_SOURCE_STEPS.findIndex(function (s) { return s.id === fromId; });
-    if (idx < 0) return;
-    var next = FORM_SOURCE_STEPS[idx + 1];
-    openSourceStepId = next ? next.id : fromId;
-    renderDocs();
-    var el = document.querySelector('.source-step[data-step="' + openSourceStepId + '"]');
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }
+      $all("[data-cf]", card).forEach(function (el) {
+        var handler = function () {
+          var f = el.getAttribute("data-cf");
+          var v = el.value;
+          if (f === "isfRequired") c.isfRequired = v === "true";
+          else c[f] = v;
+          if (f === "name") {
+            var t = $("header strong", card);
+            if (t) t.textContent = v || "Untitled customer";
+          }
+          scheduleSave();
+        };
+        el.addEventListener("change", handler);
+        if (el.tagName === "INPUT") el.addEventListener("input", handler);
+      });
 
-  document.getElementById("btnSrcDefaults").addEventListener("click", function () {
-    if (!window.confirm("Fill unanswered forms with typical Agro Hub sources? Your existing answers stay.")) return;
-    applyTypicalDefaults();
-  });
-
-  document.getElementById("docsList").addEventListener("click", function (e) {
-    var t = e.target.closest("[data-src-toggle], [data-src-next], [data-src-collapse], [data-src-done]");
-    if (!t) return;
-    if (t.getAttribute("data-src-toggle")) {
-      var id = t.getAttribute("data-src-toggle");
-      openSourceStepId = openSourceStepId === id ? "" : id;
-      renderDocs();
-      return;
-    }
-    if (t.getAttribute("data-src-next")) {
-      openNextStep(t.getAttribute("data-src-next"));
-      return;
-    }
-    if (t.getAttribute("data-src-collapse")) {
-      openSourceStepId = "";
-      renderDocs();
-      return;
-    }
-    if (t.getAttribute("data-src-done")) {
-      openSourceStepId = "";
-      renderDocs();
-      var tabBtn = document.querySelector('.tabs [data-tab="customers"]');
-      if (tabBtn) tabBtn.click();
-    }
-  });
-
-  document.getElementById("docsList").addEventListener("change", function (e) {
-    var t = e.target;
-    ensureFormSources();
-    if (t.getAttribute("data-src-step")) {
-      var stepId = t.getAttribute("data-src-step");
-      var srcId = t.getAttribute("data-src");
-      var fs = state.formSources[stepId];
-      var idx = fs.sources.indexOf(srcId);
-      if (t.checked && idx < 0) fs.sources.push(srcId);
-      if (!t.checked && idx >= 0) fs.sources.splice(idx, 1);
-      // Refresh closed-row summary without collapsing open step
-      var card = t.closest(".source-step");
-      var step = FORM_SOURCE_STEPS.find(function (s) { return s.id === stepId; });
-      if (card && step) {
-        card.classList.toggle("done", stepIsAnswered(stepId));
-        var sum = card.querySelector(".step-summary");
-        if (sum) {
-          sum.textContent = stepSummaryText(step, fs);
-          sum.classList.toggle("ok", stepIsAnswered(stepId));
-        }
-      }
-      updateSrcProgress();
-      if (document.getElementById("panel-send").classList.contains("active")) renderSamplePack();
-      scheduleSave();
-      return;
-    }
-    if (t.getAttribute("data-src-sample")) {
-      state.formSources[t.getAttribute("data-src-sample")].canSendSample = !!t.checked;
-      if (document.getElementById("panel-send").classList.contains("active")) renderSamplePack();
-      scheduleSave();
-    }
-  });
-  document.getElementById("docsList").addEventListener("input", function (e) {
-    var t = e.target;
-    ensureFormSources();
-    if (t.getAttribute("data-src-other")) {
-      var oid = t.getAttribute("data-src-other");
-      state.formSources[oid].otherSource = t.value;
-      var step = FORM_SOURCE_STEPS.find(function (s) { return s.id === oid; });
-      var card = t.closest(".source-step");
-      if (card && step) {
-        card.classList.toggle("done", stepIsAnswered(oid));
-        var sum = card.querySelector(".step-summary");
-        if (sum) {
-          sum.textContent = stepSummaryText(step, state.formSources[oid]);
-          sum.classList.toggle("ok", stepIsAnswered(oid));
-        }
-      }
-      updateSrcProgress();
-      scheduleSave();
-      return;
-    }
-    if (t.getAttribute("data-src-notes")) {
-      state.formSources[t.getAttribute("data-src-notes")].notes = t.value;
-      scheduleSave();
-    }
-  });
-
-  function renderAll() {
-    if (wsInput) wsInput.value = state.workspace || wsInput.value || "";
-    applyPaths();
-    enhanceAllPickers(document);
-    renderIsfParties();
-    renderBanks();
-    renderForwarders();
-    renderCustomers();
-    renderProducts();
-    renderDocs();
-    renderSamplePack();
-  }
-
-  /* ---- send pack (samples checklist from answers) ---- */
-  var SKIP_SAMPLE_SOURCE_IDS = {
-    not_applicable: true,
-    not_us: true,
-    sap_screen: true,
-    production_typed: true,
-    psw_fia: true,
-    psw_portal: true,
-    carrier_portal: true,
-    customer_master: true,
-    forwarder_portal: true,
-    doc_bank: true
-  };
-
-  function buildSamplePack() {
-    ensureFormSources();
-    ensurePartners();
-    var byKey = {};
-    function addItem(item) {
-      var key = item.kind + "::" + (item.sourceId || item.label);
-      if (byKey[key]) {
-        item.forms.forEach(function (f) {
-          if (byKey[key].forms.indexOf(f) < 0) byKey[key].forms.push(f);
-        });
-        return;
-      }
-      byKey[key] = item;
-    }
-
-    FORM_SOURCE_STEPS.forEach(function (step) {
-      var fs = state.formSources[step.id];
-      if (!fs) return;
-      var answered = stepIsAnswered(step.id);
-      if (!answered) return;
-
-      (fs.sources || []).forEach(function (srcId) {
-        if (SKIP_SAMPLE_SOURCE_IDS[srcId]) return;
-        var src = step.sources.find(function (s) { return s.id === srcId; });
-        if (!src) return;
-        var kind = src.tag === "email" ? "email" : src.tag === "note" ? "note" : "document";
-        if (kind === "note") {
-          addItem({
-            kind: "note",
-            sourceId: srcId,
-            label: src.label,
-            forms: [step.title],
-            detail: "No file needed — you marked this as a system / portal source"
-          });
-          return;
-        }
-        addItem({
-          kind: kind,
-          sourceId: srcId,
-          label: src.label,
-          forms: [step.title],
-          detail: kind === "email"
-            ? "Email / chat sample or template (.eml, .msg, PDF, or screenshot)"
-            : "Document sample (PDF, Word, Excel, or scan)"
+      $all("[data-cprod]", card).forEach(function (cb) {
+        cb.addEventListener("change", function () {
+          var sku = cb.getAttribute("data-cprod");
+          c.productSkus = c.productSkus || [];
+          var ix = c.productSkus.indexOf(sku);
+          if (cb.checked && ix < 0) c.productSkus.push(sku);
+          if (!cb.checked && ix >= 0) {
+            c.productSkus.splice(ix, 1);
+            if (c.productPackaging) delete c.productPackaging[sku];
+          }
+          renderCustomers();
+          scheduleSave();
         });
       });
 
-      if (fs.otherSource && fs.otherSource.trim()) {
-        addItem({
-          kind: "document",
-          sourceId: "other:" + step.id,
-          label: "Other source — " + fs.otherSource.trim(),
-          forms: [step.title],
-          detail: "Whatever you use that wasn’t in the list"
+      $all("[data-cpack]", card).forEach(function (cb) {
+        cb.addEventListener("change", function () {
+          var sku = cb.getAttribute("data-cpack-sku");
+          var code = cb.getAttribute("data-cpack");
+          var prod = state.products.find(function (p) { return p.sku === sku; });
+          var allowed = (prod && prod.packagingCodes) || [];
+          c.productPackaging = c.productPackaging || {};
+          var cur = (c.productPackaging[sku] || allowed).slice();
+          var ix = cur.indexOf(code);
+          if (cb.checked && ix < 0) cur.push(code);
+          if (!cb.checked && ix >= 0) cur.splice(ix, 1);
+          // If selection equals full product list, clear restriction
+          var same = cur.length === allowed.length && allowed.every(function (a) { return cur.indexOf(a) >= 0; });
+          if (same) delete c.productPackaging[sku];
+          else c.productPackaging[sku] = cur;
+          cb.closest(".chip").classList.toggle("on", cb.checked);
+          scheduleSave();
         });
-      }
-
-      if (fs.canSendSample) {
-        // already covered by sources; keep as reminder if they only ticked sample with no sources
-        if (!(fs.sources || []).length && !(fs.otherSource && fs.otherSource.trim())) {
-          addItem({
-            kind: "document",
-            sourceId: "sample:" + step.id,
-            label: "Sample for " + step.title,
-            forms: [step.title],
-            detail: "You marked that you can send a sample for this form"
-          });
-        }
-      }
-    });
-
-    (state.partners.forwarders || []).forEach(function (f) {
-      var name = (f.name || "").trim() || "Unnamed forwarder";
-      if (f.blPath === "manual") {
-        addItem({
-          kind: "document",
-          sourceId: "bl_template:" + name,
-          label: "BL FORMAT template — " + name,
-          forms: ["Partners · manual B/L"],
-          detail: f.canSendBlTemplate
-            ? "Blank or filled Word/PDF template (you confirmed you can send)"
-            : "Blank or filled Word/PDF template for this forwarder"
-        });
-      }
-      if (f.blPath === "gama") {
-        if (f.gamaFieldsNotes && f.gamaFieldsNotes.trim()) {
-          addItem({
-            kind: "note",
-            sourceId: "gama_fields:" + name,
-            label: "Gama fields already noted in JSON — " + name,
-            forms: ["Partners · Gama"],
-            detail: "Included in your download; screen recording still helps"
-          });
-        } else {
-          addItem({
-            kind: "note",
-            sourceId: "gama_fields_needed:" + name,
-            label: "List Gama portal fields for " + name,
-            forms: ["Partners · Gama"],
-            detail: "Fill “What do you fill in the portal?” on the Partners tab, or cover it in a recording"
-          });
-        }
-        addItem({
-          kind: "recording",
-          sourceId: "gama_rec:" + name,
-          label: "Gama portal screen recording / screenshots — " + name,
-          forms: ["Partners · Gama"],
-          detail: f.canSendScreenRecording
-            ? "Typical booking entry walkthrough (you confirmed you can send)"
-            : "Short Loom / MP4 / screenshots of a typical Gama entry"
-        });
-      }
-      if (f.blPath === "manual" || f.blPath === "gama" || f.canSendCheckingCopy) {
-        addItem({
-          kind: "email",
-          sourceId: "checking:" + name,
-          label: "Checking-copy sample — " + name,
-          forms: ["Partners · checking copy"],
-          detail: f.canSendCheckingCopy
-            ? "Email or PDF of a checking copy before Approve (you confirmed)"
-            : "Email or PDF of a checking copy before you Approve"
-        });
-      }
-    });
-
-    (state.customers || []).forEach(function (c) {
-      if (c.customerCiDifferent === "different" && (c.name || "").trim()) {
-        addItem({
-          kind: "document",
-          sourceId: "cust_ci:" + c.name,
-          label: "Customer-specific CI layout — " + c.name,
-          forms: ["Customers"],
-          detail: "You marked this buyer’s CI as different from the bank CI"
-        });
-      }
-    });
-
-    if (state.documents && state.documents.extraNotes && String(state.documents.extraNotes).trim()) {
-      addItem({
-        kind: "note",
-        sourceId: "extra_notes",
-        label: "Extra notes already in JSON",
-        forms: ["Form sources"],
-        detail: "Included in your download"
       });
-    }
-
-    var items = Object.keys(byKey).map(function (k) { return byKey[k]; });
-    var order = { document: 0, email: 1, recording: 2, note: 3 };
-    items.sort(function (a, b) {
-      return (order[a.kind] - order[b.kind]) || a.label.localeCompare(b.label);
     });
-    return {
-      generatedAt: new Date().toISOString(),
-      counts: {
-        document: items.filter(function (i) { return i.kind === "document"; }).length,
-        email: items.filter(function (i) { return i.kind === "email"; }).length,
-        recording: items.filter(function (i) { return i.kind === "recording"; }).length,
-        note: items.filter(function (i) { return i.kind === "note"; }).length,
-        total: items.length
-      },
-      items: items
-    };
   }
 
-  function renderSamplePack() {
-    var root = document.getElementById("samplePackRoot");
-    var summary = document.getElementById("packSummary");
-    if (!root) return;
-    var pack = buildSamplePack();
-    state.samplePack = pack;
-
-    var c = pack.counts;
-    if (summary) {
-      summary.innerHTML = c.total
-        ? ("Your pack: <strong>" + c.document + "</strong> document(s), <strong>" +
-          c.email + "</strong> email(s), <strong>" + c.recording +
-          "</strong> recording(s)" + (c.note ? ", " + c.note + " note(s)" : "") +
-          ". Download JSON + checklist, then attach these files in one email.")
-        : "No samples yet — answer Form sources (and add forwarders on Partners). This list builds automatically.";
+  /* ---------- Forwarders ---------- */
+  function renderForwarders() {
+    var root = $("#forwardersList");
+    if (!state.forwarders.length) {
+      root.innerHTML = '<div class="empty">No forwarders</div>';
+      return;
     }
+    root.innerHTML = state.forwarders.map(function (f, i) {
+      return '<div class="row-card" data-fwd-i="' + i + '">' +
+        '<header><strong>' + esc(f.name || "Forwarder") + '</strong>' +
+        '<button type="button" class="danger" data-del-fwd="' + i + '">Remove</button></header>' +
+        '<div class="grid">' +
+        '<label class="field">Id<input data-ff="id" value="' + esc(f.id) + '" /></label>' +
+        '<label class="field">Name<input data-ff="name" value="' + esc(f.name) + '" /></label>' +
+        '<label class="field">Email<input data-ff="email" value="' + esc(f.email) + '" /></label>' +
+        '<label class="field">Phone<input data-ff="phone" value="' + esc(f.phone || "") + '" /></label>' +
+        '<label class="field">BL path<select data-ff="blPath">' +
+        '<option value="portal"' + (f.blPath === "portal" ? " selected" : "") + ">portal</option>" +
+        '<option value="manual"' + (f.blPath === "manual" ? " selected" : "") + ">manual</option>" +
+        "</select></label>" +
+        '<label class="field">Notes<input data-ff="notes" value="' + esc(f.notes || "") + '" /></label>' +
+        "</div></div>";
+    }).join("");
 
-    function groupHtml(title, kind, emptyMsg) {
-      var list = pack.items.filter(function (i) { return i.kind === kind; });
-      var html = '<div class="pack-group"><h3>' + escapeHtml(title) +
-        '<span class="pack-count">' + list.length + "</span></h3>";
-      if (!list.length) {
-        html += '<p class="pack-empty">' + escapeHtml(emptyMsg) + "</p></div>";
-        return html;
-      }
-      html += '<ul class="pack-list">';
-      list.forEach(function (item) {
-        var kindLabel = kind === "document" ? "Document" : kind === "email" ? "Email" :
-          kind === "recording" ? "Recording" : "Note";
-        html += "<li><span class=\"kind kind-" + kind + "\">" + kindLabel + "</span><span>" +
-          "<strong>" + escapeHtml(item.label) + "</strong>" +
-          '<span class="meta">' + escapeHtml(item.detail || "") +
-          (item.forms && item.forms.length ? " · For: " + escapeHtml(item.forms.join(", ")) : "") +
-          "</span></span></li>";
+    $all("[data-del-fwd]", root).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        state.forwarders.splice(+btn.getAttribute("data-del-fwd"), 1);
+        renderForwarders(); scheduleSave();
       });
-      html += "</ul></div>";
-      return html;
-    }
-
-    root.innerHTML =
-      groupHtml("Documents / files", "document", "No document samples inferred yet.") +
-      groupHtml("Emails / chat samples", "email", "No email samples inferred yet.") +
-      groupHtml("Screen recordings", "recording", "No recordings needed unless you use Gama (Seagold).") +
-      groupHtml("Notes (no file)", "note", "None.");
-  }
-
-  function samplePackToText(pack) {
-    pack = pack || buildSamplePack();
-    var lines = [
-      "Agro Hub × TraceRoot — sample pack checklist",
-      "Generated: " + (pack.generatedAt || new Date().toISOString()),
-      "Workspace: " + (state.workspace || state.company.legalName || "(unnamed)"),
-      "",
-      "Attach these with your JSON download and email TraceRoot.",
-      ""
-    ];
-    function section(title, kind) {
-      var list = pack.items.filter(function (i) { return i.kind === kind; });
-      lines.push("=== " + title + " (" + list.length + ") ===");
-      if (!list.length) {
-        lines.push("(none)");
-        lines.push("");
-        return;
-      }
-      list.forEach(function (item, idx) {
-        lines.push((idx + 1) + ". [ ] " + item.label);
-        if (item.detail) lines.push("    " + item.detail);
-        if (item.forms && item.forms.length) lines.push("    For: " + item.forms.join(", "));
-      });
-      lines.push("");
-    }
-    section("DOCUMENTS", "document");
-    section("EMAILS / CHAT", "email");
-    section("SCREEN RECORDINGS", "recording");
-    section("NOTES (no file)", "note");
-    lines.push("Also attach: agro-hub-data-….json (from Download JSON + checklist)");
-    lines.push("");
-    return lines.join("\n");
-  }
-
-  function samplePackEmailDraft(pack) {
-    pack = pack || buildSamplePack();
-    var c = pack.counts;
-    var body = [
-      "Hi TraceRoot,",
-      "",
-      "Please find attached our Agro Hub export desk data collection JSON and sample pack.",
-      "",
-      "Checklist summary: " + c.document + " document(s), " + c.email +
-        " email(s), " + c.recording + " recording(s).",
-      "",
-      "Samples included / coming:",
-      ""
-    ];
-    pack.items.filter(function (i) { return i.kind !== "note"; }).forEach(function (item) {
-      body.push("- [" + item.kind + "] " + item.label);
     });
-    body.push("");
-    body.push("Thanks,");
-    body.push("Agro Hub Export");
-    return body.join("\n");
+    $all(".row-card", root).forEach(function (card) {
+      var i = +card.getAttribute("data-fwd-i");
+      $all("[data-ff]", card).forEach(function (el) {
+        var h = function () {
+          state.forwarders[i][el.getAttribute("data-ff")] = el.value;
+          if (el.getAttribute("data-ff") === "name") {
+            var t = $("header strong", card);
+            if (t) t.textContent = el.value || "Forwarder";
+          }
+          scheduleSave();
+        };
+        el.addEventListener("change", h);
+        if (el.tagName === "INPUT") el.addEventListener("input", h);
+      });
+    });
   }
 
-  function downloadJsonAndChecklist() {
-    collectFromDom();
-    ensurePartners();
-    ensureFormSources();
-    var pack = buildSamplePack();
-    state.samplePack = pack;
-    var base = "agro-hub-data-" + slugify(state.company.legalName || state.workspace || "draft") +
-      "-" + new Date().toISOString().slice(0, 10);
-    downloadText(base + ".json", JSON.stringify(state, null, 2), "application/json");
-    downloadText(base + "-sample-checklist.txt", samplePackToText(pack), "text/plain");
+  /* ---------- Samples ---------- */
+  function renderSamples() {
+    $("#reviewSummary").innerHTML =
+      "<ul>" +
+      "<li><strong>" + state.products.length + "</strong> products · <strong>" +
+      state.customers.length + "</strong> customers · <strong>" +
+      state.forwarders.length + "</strong> forwarders</li>" +
+      "<li><strong>" + packagingOptions().length + "</strong> packaging types in LOVs</li>" +
+      "<li>Company: " + esc(state.company.legalName || "(not set)") + "</li>" +
+      "</ul>";
+
+    function list(items, key, tagClass) {
+      return items.map(function (d) {
+        var on = !!(state.sampleChecks[key] || {})[d.id];
+        return "<li><input type=\"checkbox\" data-id=\"" + d.id + "\"" +
+          (on ? " checked" : "") + " /><span><span class=\"tag " + tagClass + "\">" +
+          (key === "docs" ? "doc" : "email") + "</span>" + esc(d.label) + "</span></li>";
+      }).join("");
+    }
+    $("#docChecks").innerHTML = list(DOC_SAMPLES, "docs", "doc");
+    $("#emailChecks").innerHTML = list(EMAIL_SAMPLES, "emails", "email");
+    $all("#docChecks input, #emailChecks input").forEach(function (cb) {
+      cb.addEventListener("change", function () {
+        var bucket = cb.closest("#docChecks") ? "docs" : "emails";
+        state.sampleChecks[bucket] = state.sampleChecks[bucket] || {};
+        state.sampleChecks[bucket][cb.getAttribute("data-id")] = cb.checked;
+        scheduleSave();
+      });
+    });
+  }
+
+  /* ---------- Export ---------- */
+  function downloadJson() {
     persist();
-    setStatus("Downloaded JSON + checklist (" + pack.counts.total + " items)", true);
-    renderSamplePack();
-  }
-
-  function goToSendPack() {
-    var tabBtn = document.querySelector('.tabs [data-tab="send"]');
-    if (tabBtn) tabBtn.click();
-    renderSamplePack();
-    var panel = document.getElementById("panel-send");
-    if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  /* ---- CSV ---- */
-  function csvEscape(v) {
-    var s = String(v == null ? "" : v);
-    if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
-    return s;
-  }
-  function toCsv(headers, rows) {
-    var lines = [headers.join(",")];
-    rows.forEach(function (row) {
-      lines.push(headers.map(function (h) { return csvEscape(row[h]); }).join(","));
-    });
-    return lines.join("\n") + "\n";
-  }
-  function parseCsv(text) {
-    var rows = [];
-    var i = 0, field = "", row = [], inQ = false;
-    text = text.replace(/^\uFEFF/, "");
-    while (i < text.length) {
-      var ch = text[i];
-      if (inQ) {
-        if (ch === '"') {
-          if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
-          inQ = false; i++; continue;
-        }
-        field += ch; i++; continue;
-      }
-      if (ch === '"') { inQ = true; i++; continue; }
-      if (ch === ",") { row.push(field); field = ""; i++; continue; }
-      if (ch === "\n" || ch === "\r") {
-        if (ch === "\r" && text[i + 1] === "\n") i++;
-        row.push(field); field = "";
-        if (row.some(function (x) { return String(x).trim(); })) rows.push(row);
-        row = []; i++; continue;
-      }
-      field += ch; i++;
-    }
-    row.push(field);
-    if (row.some(function (x) { return String(x).trim(); })) rows.push(row);
-    if (!rows.length) return [];
-    var headers = rows[0].map(function (h) { return String(h).trim(); });
-    return rows.slice(1).map(function (r) {
-      var o = {};
-      headers.forEach(function (h, idx) { o[h] = r[idx] != null ? String(r[idx]).trim() : ""; });
-      return o;
-    });
-  }
-  function downloadText(filename, text, mime) {
-    var blob = new Blob([text], { type: mime || "text/plain;charset=utf-8" });
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = filename;
+    a.download = "agro-hub-masters.json";
     a.click();
-    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    URL.revokeObjectURL(a.href);
   }
 
-  document.getElementById("dlCustCsv").addEventListener("click", function () {
-    var sample = [emptyCustomer()];
-    sample[0].name = "Example Buyer Inc";
-    sample[0].country = "United States";
-    sample[0].isfRequired = "yes";
-    sample[0].blPath = "manual";
-    sample[0].requiredDocPack = "bill_of_lading, customer_invoice, packing_list, e_coo";
-    downloadText("agro-hub-customers-template.csv", toCsv(CUST_CSV_HEADERS, sample), "text/csv;charset=utf-8");
-  });
-  document.getElementById("dlProdCsv").addEventListener("click", function () {
-    downloadText(
-      "agro-hub-products-template.csv",
-      toCsv(PROD_CSV_HEADERS, [{ sku: "AH-SALT-FINE", description: "Himalayan Pink Salt — Fine", unit: "KG", typicalQty: "20000", unitPrice: "2.4", hsCode: "2501.0090" }]),
-      "text/csv;charset=utf-8"
-    );
-  });
-  document.getElementById("importCustCsv").addEventListener("change", function (e) {
-    var file = e.target.files && e.target.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function () {
-      try {
-        var rows = parseCsv(String(reader.result || ""));
-        if (!rows.length) { alert("No data rows found in CSV."); return; }
-        collectFromDom();
-        state.customers = rows.map(function (r) {
-          var c = emptyCustomer();
-          CUST_CSV_HEADERS.forEach(function (h) { if (r[h] != null) c[h] = r[h]; });
-          return c;
-        });
-        renderCustomers();
-        scheduleSave();
-        setStatus("Imported " + rows.length + " customers", true);
-      } catch (err) {
-        alert("Could not parse CSV: " + err.message);
-      }
-      e.target.value = "";
-    };
-    reader.readAsText(file);
-  });
-  document.getElementById("importProdCsv").addEventListener("change", function (e) {
-    var file = e.target.files && e.target.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function () {
-      try {
-        var rows = parseCsv(String(reader.result || ""));
-        if (!rows.length) { alert("No data rows found in CSV."); return; }
-        collectFromDom();
-        state.products = rows.map(function (r) {
-          var p = { sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" };
-          PROD_CSV_HEADERS.forEach(function (h) { if (r[h] != null) p[h] = r[h]; });
-          return p;
-        });
-        renderProducts();
-        scheduleSave();
-        setStatus("Imported " + rows.length + " products", true);
-      } catch (err) {
-        alert("Could not parse CSV: " + err.message);
-      }
-      e.target.value = "";
-    };
-    reader.readAsText(file);
-  });
-
-  /* ---- JSON / clear / print / send pack ---- */
-  document.getElementById("btnJson").addEventListener("click", function () {
-    downloadJsonAndChecklist();
-    goToSendPack();
-  });
-  document.getElementById("btnPack").addEventListener("click", goToSendPack);
-  document.getElementById("btnDownloadAll").addEventListener("click", downloadJsonAndChecklist);
-  document.getElementById("btnChecklistOnly").addEventListener("click", function () {
-    collectFromDom();
-    var pack = buildSamplePack();
-    var base = "agro-hub-sample-checklist-" + slugify(state.workspace || "draft") +
-      "-" + new Date().toISOString().slice(0, 10) + ".txt";
-    downloadText(base, samplePackToText(pack), "text/plain");
-    setStatus("Downloaded checklist (" + pack.counts.total + " items)", true);
-  });
-  document.getElementById("btnCopyEmail").addEventListener("click", function () {
-    collectFromDom();
-    var text = samplePackEmailDraft(buildSamplePack());
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () {
-        setStatus("Email draft copied", true);
-      }).catch(function () {
-        window.prompt("Copy email draft:", text);
-      });
-    } else {
-      window.prompt("Copy email draft:", text);
+  function downloadXlsx() {
+    if (typeof XLSX === "undefined") {
+      alert("Excel library still loading — try again in a second.");
+      return;
     }
-  });
-  document.getElementById("btnPrint").addEventListener("click", function () { window.print(); });
-  document.getElementById("btnClear").addEventListener("click", function () {
-    if (!confirm("Clear this draft from this browser?")) return;
-    localStorage.removeItem(storageKey());
-    state = {
-      version: 1, kind: KIND, workspace: wsInput.value || "",
-      company: {}, isfParties: [],
-      banks: [], contacts: {}, partners: { forwarders: defaultForwarders() }, defaults: {},
-      customers: [emptyCustomer()],
-      products: [{ sku: "", description: "", unit: "", typicalQty: "", unitPrice: "", hsCode: "" }],
-      formSources: {},
-      formSourcesVersion: 3,
-      documents: {}
-    };
-    renderAll();
-    setStatus("Draft cleared", false);
-  });
+    persist();
+    var wb = XLSX.utils.book_new();
 
-  document.body.addEventListener("input", function (e) {
-    if (e.target.closest("[data-path]") || e.target === wsInput) scheduleSave();
-  });
-  document.body.addEventListener("change", function (e) {
-    if (e.target.closest("[data-path]") || e.target === wsInput) scheduleSave();
-  });
-  wsInput.addEventListener("change", function () { loadDraft(); });
+    function sheet(name, rows) {
+      var ws = XLSX.utils.json_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 31));
+    }
 
-  try {
-    var last = localStorage.getItem(LAST_WS_KEY);
-    if (last) wsInput.value = last;
-  } catch (e) {}
-  loadDraft();
+    sheet("Agro Hub", [Object.assign({}, state.company)]);
+    sheet("Banks", state.banks.map(function (b, i) {
+      return {
+        bank_id: b.id || ("bank-" + (i + 1)),
+        bank_name: b.bankName,
+        iban: b.iban,
+        currency: b.currency,
+        is_default: b.isDefault ? "TRUE" : "FALSE"
+      };
+    }));
+
+    var lovRows = [];
+    LOV_META.forEach(function (m) {
+      (state.lovs[m.key] || []).forEach(function (r, i) {
+        lovRows.push({ list_name: m.key, code: r.code, label: r.label, sort_order: (i + 1) * 10 });
+      });
+    });
+    sheet("LOVs", lovRows);
+
+    sheet("Products", state.products.map(function (p) {
+      return {
+        sku: p.sku,
+        product_name_description: p.name,
+        hs_code: p.hsCode,
+        unit_of_measurement: p.uom,
+        packaging_types: (p.packagingCodes || []).map(labelForPack).join(" | "),
+        packaging_codes: (p.packagingCodes || []).join("|"),
+        notes: p.notes || ""
+      };
+    }));
+
+    var pp = [];
+    state.products.forEach(function (p) {
+      (p.packagingCodes || []).forEach(function (code) {
+        pp.push({ sku: p.sku, packaging_code: code, packaging_label: labelForPack(code) });
+      });
+    });
+    sheet("Product Packaging", pp.length ? pp : [{ sku: "", packaging_code: "", packaging_label: "" }]);
+
+    sheet("Customers", state.customers.map(function (c) {
+      return {
+        customer_id: c.id,
+        name: c.name,
+        address_street: c.addressStreet,
+        address_city: c.addressCity,
+        address_postal_code: c.addressPostalCode,
+        address_country: c.addressCountry,
+        contact_phone: c.contactPhone,
+        contact_email: c.contactEmail,
+        contact_phone_2: c.contactPhone2 || "",
+        contact_email_2: c.contactEmail2 || "",
+        default_port_of_destination: c.defaultPortOfDestination,
+        fda_registration_no: c.fdaRegistrationNo || "",
+        default_payment_terms: c.defaultPaymentTerms,
+        default_incoterms: c.defaultIncoterms,
+        default_forwarder_id: c.defaultForwarderId,
+        bl_path: c.blPath,
+        isf_required: c.isfRequired ? "TRUE" : "FALSE",
+        default_document_pack: c.defaultDocumentPack || "",
+        ship_to_name: c.shipToName || "",
+        ship_to_address: c.shipToAddress || "",
+        consignee_name: c.consigneeName || "",
+        consignee_address: c.consigneeAddress || "",
+        product_skus: (c.productSkus || []).join("|")
+      };
+    }));
+
+    var cp = [];
+    state.customers.forEach(function (c) {
+      (c.productSkus || []).forEach(function (sku) {
+        var prod = state.products.find(function (p) { return p.sku === sku; });
+        var packs = (c.productPackaging && c.productPackaging[sku]) ||
+          (prod && prod.packagingCodes) || [];
+        cp.push({
+          customer_id: c.id,
+          sku: sku,
+          product_name: prod ? prod.name : "",
+          packaging_types: packs.map(labelForPack).join(" | "),
+          packaging_codes: packs.join("|")
+        });
+      });
+    });
+    sheet("Customer Products", cp.length ? cp : [{ customer_id: "", sku: "", product_name: "", packaging_types: "", packaging_codes: "" }]);
+
+    sheet("Forwarders", state.forwarders.map(function (f) {
+      return {
+        forwarder_id: f.id,
+        name: f.name,
+        email: f.email,
+        phone: f.phone || "",
+        bl_path: f.blPath,
+        notes: f.notes || ""
+      };
+    }));
+
+    XLSX.writeFile(wb, "AgroHub-Masters.xlsx");
+  }
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  /* ---------- Wire up ---------- */
+  function init() {
+    load();
+    renderCompany();
+    renderLovs();
+    renderProducts();
+    renderCustomers();
+    renderForwarders();
+    renderSamples();
+
+    $all(".steps button").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        goStep(btn.getAttribute("data-step"));
+      });
+    });
+    $all("[data-next]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        goStep(btn.getAttribute("data-next"));
+      });
+    });
+
+    $("#addBank").addEventListener("click", function () {
+      state.banks.push({ id: uid("bank"), bankName: "", iban: "", currency: "USD", isDefault: false });
+      renderBanks(); scheduleSave();
+    });
+    $("#addProduct").addEventListener("click", function () {
+      state.products.push({
+        sku: uid("sku").toUpperCase().replace("SKU-", "AH-"),
+        name: "",
+        hsCode: "",
+        uom: "KG",
+        packagingCodes: [],
+        notes: ""
+      });
+      renderProducts(); scheduleSave();
+    });
+    $("#addCustomer").addEventListener("click", function () {
+      state.customers.push({
+        id: uid("cust"),
+        name: "",
+        addressStreet: "",
+        addressCity: "",
+        addressPostalCode: "",
+        addressCountry: "",
+        contactPhone: "",
+        contactEmail: "",
+        contactPhone2: "",
+        contactEmail2: "",
+        fdaRegistrationNo: "",
+        defaultPortOfDestination: "",
+        defaultPaymentTerms: "",
+        defaultIncoterms: "",
+        defaultForwarderId: "",
+        blPath: "manual",
+        isfRequired: false,
+        defaultDocumentPack: "",
+        shipToName: "",
+        shipToAddress: "",
+        consigneeName: "",
+        consigneeAddress: "",
+        productSkus: [],
+        productPackaging: {}
+      });
+      renderCustomers(); scheduleSave();
+    });
+    $("#addForwarder").addEventListener("click", function () {
+      state.forwarders.push({
+        id: uid("fwd"), name: "", email: "", phone: "", blPath: "manual", notes: ""
+      });
+      renderForwarders(); scheduleSave();
+    });
+
+    $("#btnJson").addEventListener("click", downloadJson);
+    $("#btnJson2").addEventListener("click", downloadJson);
+    $("#btnXlsx").addEventListener("click", downloadXlsx);
+    $("#btnXlsx2").addEventListener("click", downloadXlsx);
+    $("#btnReset").addEventListener("click", function () {
+      if (!confirm("Clear all master data saved in this browser?")) return;
+      localStorage.removeItem(STORAGE_KEY);
+      state = defaultState();
+      renderCompany(); renderLovs(); renderProducts();
+      renderCustomers(); renderForwarders(); renderSamples();
+      goStep("company");
+      setStatus("Reset", true);
+    });
+  }
+
+  init();
 })();
 </script>
 </body>

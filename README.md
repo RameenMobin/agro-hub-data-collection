@@ -1,11 +1,11 @@
-# Agro Hub × TraceRoot — export data collection
+# Agro Hub × TraceRoot — master data portal
 
-Standalone portal for Agro Hub to enter company, customer, product, partner, and
-source-document information used to configure the TraceRoot export desk.
+Guided wizard for Agro Hub to enter **masters only**: company, LOVs, products
+(with packaging multi-select), customers (pick products → packs appear),
+forwarders. Sample PDFs/emails are a checklist on the last step.
 
-Progress saves in the browser under an optional draft name. When finished they
-**Download JSON** (and optionally use **CSV** for customers/products) and email
-TraceRoot. Attach sample PDFs / email examples separately.
+Progress saves in the browser. **Download JSON** (canonical) or **Download Excel**
+(multi-sheet export matching the old workbook layout).
 
 ## Local preview
 
@@ -13,93 +13,56 @@ TraceRoot. Attach sample PDFs / email examples separately.
 npx serve .
 ```
 
-## Deploy to Vercel (this repo only)
+## Deploy to Vercel
 
 ```bash
 npx vercel --prod
 ```
 
-Or: Vercel → **Add New Project** → import **this** repository → Deploy  
-(no framework, no build command — static `index.html`).
+Or: Vercel → import **this** folder / sibling repo only (static `index.html`).  
+Do **not** connect the SilverBirch-FE monorepo as the project root unless this
+folder is configured as the root directory.
 
-Do **not** connect the SilverBirch-FE monorepo.
+## Client flow
 
-## Client workflow
+1. **Company** — letterhead + banks  
+2. **Dropdowns** — payment, Inco, ports, packaging, pallet  
+3. **Products** — name, HS, UoM; tick packaging types from LOVs  
+4. **Customers** — address/defaults; tick products; optionally narrow packs  
+5. **Forwarders** — portal vs manual  
+6. **Samples & send** — tick docs/emails to attach → download JSON/Excel → email TraceRoot with files  
 
-1. Open the Vercel URL.
-2. Fill **Form sources** — one form at a time (PI, CRO, customs invoice, FI request, …), or **Use typical defaults**.
-3. Fill **Company**, **Customers**, **Products**, **Partners**.
-4. Optional: CSV templates for customers/products → Import CSV.
-5. Open **Send pack** — checklist of documents / emails / screen recordings inferred from your answers.
-6. **Download JSON + checklist** → email TraceRoot with the listed sample files.
-7. Optional: **Print**.
-
-## JSON shape
+## JSON shape (v2)
 
 ```json
 {
-  "version": 1,
-  "kind": "agro-hub-data-collection",
+  "version": 2,
+  "kind": "agro-hub-masters",
   "company": {},
-  "isfParties": [
-    {
-      "role": "seller",
-      "name": "",
-      "street": "",
-      "city": "",
-      "state": "",
-      "postalCode": "",
-      "country": "",
-      "contact": "",
-      "fdaRegistration": "",
-      "sameAsShipper": false
-    }
-  ],
   "banks": [],
-  "contacts": {},
-  "partners": {
-    "forwarders": [
-      {
-        "name": "Seagold",
-        "contact": "",
-        "blPath": "gama",
-        "gamaFieldsNotes": "",
-        "canSendScreenRecording": false,
-        "canSendCheckingCopy": true,
-        "checkingCopyNotes": ""
-      },
-      {
-        "name": "",
-        "blPath": "manual",
-        "canSendBlTemplate": true,
-        "blTemplateNotes": "",
-        "canSendCheckingCopy": true
-      }
-    ],
-    "clearingName": "",
-    "fumigatorName": "",
-    "isfAgentName": ""
+  "lovs": {
+    "payment_terms": [{ "code": "", "label": "" }],
+    "packaging": [{ "code": "", "label": "" }]
   },
-  "defaults": {},
-  "customers": [],
-  "products": [],
-  "formSources": {
-    "ci_sap": {
-      "sources": ["final_pi", "cro_pdf"],
-      "canSendSample": true,
-      "otherSource": "",
-      "notes": ""
+  "products": [{
+    "sku": "",
+    "name": "",
+    "hsCode": "",
+    "uom": "KG",
+    "packagingCodes": ["25KG_BAG", "BULK_KG"]
+  }],
+  "customers": [{
+    "id": "",
+    "name": "",
+    "productSkus": ["AH-SALT-FINE"],
+    "productPackaging": {
+      "AH-SALT-FINE": ["BULK_KG"]
     }
-  },
-  "documents": { "extraNotes": "" }
+  }],
+  "forwarders": [],
+  "sampleChecks": { "docs": {}, "emails": {} }
 }
 ```
 
-Map `customers[]` into Agro Hub `customers.json` defaults in the TraceRoot profile.
-
-## Related (monorepo)
-
-Reference copy + printable checklist live in SilverBirch-FE:
-
-- `agro-hub-data-collection/` (reference copy)
-- `docs/onboarding/agro-hub-source-docs-checklist.html`
+If `productPackaging[sku]` is omitted, the customer may use **all** packs defined
+on that product.
