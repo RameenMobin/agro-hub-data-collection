@@ -432,6 +432,30 @@
     saveTimer = setTimeout(persist, 250);
   }
 
+  function mergeLovDefaults(savedLovs) {
+    var defaults = defaultState().lovs;
+    var out = {};
+    Object.keys(defaults).forEach(function (k) {
+      var saved = normalizeLovList((savedLovs && savedLovs[k]) || []);
+      var seed = normalizeLovList(defaults[k] || []);
+      // Saved values first (client edits), then any missing seeds
+      var seen = {};
+      out[k] = [];
+      saved.concat(seed).forEach(function (v) {
+        var key = v.toLowerCase();
+        if (seen[key]) return;
+        seen[key] = true;
+        out[k].push(v);
+      });
+    });
+    // Keep any extra LOV keys the client may have
+    Object.keys(savedLovs || {}).forEach(function (k) {
+      if (out[k]) return;
+      out[k] = normalizeLovList(savedLovs[k]);
+    });
+    return out;
+  }
+
   function load() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -439,15 +463,9 @@
       var parsed = JSON.parse(raw);
       if (parsed && parsed.kind === "agro-hub-masters") {
         var base = defaultState();
-        state = Object.assign(base, parsed);
-        state.lovs = Object.assign({}, base.lovs, parsed.lovs || {});
-        Object.keys(state.lovs).forEach(function (k) {
-          state.lovs[k] = normalizeLovList(state.lovs[k]);
-        });
-        // Ensure default HS seeds appear even if an older draft omitted them
-        (base.lovs.hs_codes || []).forEach(function (code) {
-          ensureLov("hs_codes", code);
-        });
+        // Do not mutate `base` — Object.assign(base, parsed) was wiping default LOV seeds
+        state = Object.assign({}, base, parsed);
+        state.lovs = mergeLovDefaults(parsed.lovs || {});
         state.company = Object.assign({}, base.company, parsed.company || {});
         state.sampleChecks = Object.assign({ docs: {}, emails: {} }, parsed.sampleChecks || {});
         state.products = (parsed.products || []).map(function (p) {
@@ -456,7 +474,15 @@
           var hs = p.hsCodes != null ? p.hsCodes : p.hsCode;
           if (typeof hs === "string") hs = hs ? [hs] : [];
           var hsList = normalizePackList(hs || []);
-          hsList.forEach(function (code) { ensureLov("hs_codes", code); });
+          hsList.forEach(function (code) {
+            var key = String(code).trim();
+            if (!key) return;
+            state.lovs.hs_codes = state.lovs.hs_codes || [];
+            var exists = state.lovs.hs_codes.some(function (v) {
+              return v.toLowerCase() === key.toLowerCase();
+            });
+            if (!exists) state.lovs.hs_codes.push(key);
+          });
           return Object.assign({}, p, {
             packaging: normalizePackList(p.packaging || p.packagingCodes || []),
             uoms: normalizePackList(uoms || []),
@@ -598,6 +624,8 @@
   ];
 
   function renderLovs() {
+    // Backfill seeds if an older draft left a list empty (esp. HS codes)
+    state.lovs = mergeLovDefaults(state.lovs || {});
     var root = $("#lovsRoot");
     root.innerHTML = LOV_META.map(function (m) {
       var rows = normalizeLovList(state.lovs[m.key]);
