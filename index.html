@@ -131,6 +131,21 @@
     .row-card header strong { color: var(--ink); font-size: 13px; }
     .row-card header .meta { font-size: 11px; color: var(--muted); }
     .row-card .grid { gap: 6px 10px; }
+    .contacts-block { grid-column: 1 / -1; margin-top: 2px; }
+    .contacts-block > .lbl {
+      display: block; font-size: 11.5px; font-weight: 600; color: var(--ink); margin-bottom: 4px;
+    }
+    .contact-row {
+      display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 6px 8px;
+      align-items: end; margin-bottom: 6px; padding: 6px 8px;
+      background: #fff; border: 1px solid var(--line); border-radius: 6px;
+    }
+    .contact-row .field { margin: 0; }
+    .contact-row .danger { height: 32px; align-self: end; }
+    @media (max-width: 700px) {
+      .contact-row { grid-template-columns: 1fr auto; }
+      .contact-row .field { grid-column: 1 / -1; }
+    }
     .msel { position: relative; margin-top: 0; }
     .msel-toggle {
       width: 100%; text-align: left; font: inherit; font-weight: 400;
@@ -417,11 +432,9 @@
         city: "",
         postalCode: "",
         country: "Pakistan",
-        contactPhone: "",
-        contactEmail: "",
+        contacts: [{ name: "", email: "", phone: "" }],
         fdaRegistrationNo: "",
-        ntn: "",
-        defaultPortOfLoading: "Karachi Port"
+        ntn: ""
       },
       banks: [
         { id: uid("bank"), bankName: "Dubai Islamic Bank", iban: "", currency: "USD", isDefault: true }
@@ -457,8 +470,8 @@
       products: [],
       customers: [],
       forwarders: [
-        { id: "seagold", name: "Seagold", email: "", phone: "", blPath: "portal", notes: "" },
-        { id: "gama", name: "Gama", email: "", phone: "", blPath: "portal", notes: "" }
+        { id: "seagold", name: "Seagold", contacts: [{ name: "", email: "", phone: "" }], blPath: "portal", notes: "" },
+        { id: "gama", name: "Gama", contacts: [{ name: "", email: "", phone: "" }], blPath: "portal", notes: "" }
       ],
       sampleChecks: { docs: {}, emails: {} }
     };
@@ -544,7 +557,17 @@
         state = Object.assign({}, base, parsed);
         state.lovs = mergeLovDefaults(parsed.lovs || {});
         state.company = Object.assign({}, base.company, parsed.company || {});
+        state.company.contacts = migrateContacts(parsed.company || {});
+        delete state.company.contactPhone;
+        delete state.company.contactEmail;
+        delete state.company.defaultPortOfLoading;
         state.sampleChecks = Object.assign({ docs: {}, emails: {} }, parsed.sampleChecks || {});
+        state.forwarders = (parsed.forwarders || base.forwarders).map(function (f) {
+          var next = Object.assign({}, f, { contacts: migrateContacts(f) });
+          delete next.email;
+          delete next.phone;
+          return next;
+        });
         state.products = (parsed.products || []).map(function (p) {
           var uoms = p.uoms != null ? p.uoms : p.uom;
           if (typeof uoms === "string") uoms = uoms ? [uoms] : [];
@@ -575,13 +598,99 @@
             });
             if (!exists) state.lovs.port_of_destination.push(key);
           });
-          return Object.assign({}, c, {
+          var next = Object.assign({}, c, {
             productPackaging: pp,
-            defaultPorts: ports
+            defaultPorts: ports,
+            contacts: migrateContacts(c)
           });
+          delete next.contactPhone;
+          delete next.contactEmail;
+          delete next.contactPhone2;
+          delete next.contactEmail2;
+          return next;
         });
       }
     } catch (e) { /* ignore */ }
+  }
+
+  function emptyContact() {
+    return { name: "", email: "", phone: "" };
+  }
+
+  /** Normalize contacts list; migrate legacy phone/email / phone2/email2 fields. */
+  function migrateContacts(obj) {
+    if (!obj) return [emptyContact()];
+    if (Array.isArray(obj.contacts) && obj.contacts.length) {
+      return obj.contacts.map(function (c) {
+        return {
+          name: String((c && c.name) || "").trim(),
+          email: String((c && c.email) || "").trim(),
+          phone: String((c && c.phone) || "").trim()
+        };
+      });
+    }
+    var list = [];
+    var e1 = String(obj.contactEmail || obj.email || "").trim();
+    var p1 = String(obj.contactPhone || obj.phone || "").trim();
+    var n1 = String(obj.contactName || "").trim();
+    if (n1 || e1 || p1) list.push({ name: n1, email: e1, phone: p1 });
+    var e2 = String(obj.contactEmail2 || "").trim();
+    var p2 = String(obj.contactPhone2 || "").trim();
+    if (e2 || p2) list.push({ name: "", email: e2, phone: p2 });
+    return list.length ? list : [emptyContact()];
+  }
+
+  function contactsBlockHtml(contacts, blockKey) {
+    var list = contacts && contacts.length ? contacts : [emptyContact()];
+    var rows = list.map(function (c, i) {
+      return '<div class="contact-row" data-contact-i="' + i + '">' +
+        '<label class="field">Name<input data-ct="name" value="' + esc(c.name) + '" placeholder="Contact name" /></label>' +
+        '<label class="field">Email<input data-ct="email" value="' + esc(c.email) + '" placeholder="email@…" /></label>' +
+        '<label class="field">Phone<input data-ct="phone" value="' + esc(c.phone) + '" placeholder="+…" /></label>' +
+        (list.length > 1
+          ? '<button type="button" class="danger" data-del-contact="' + i + '">×</button>'
+          : '<span></span>') +
+        "</div>";
+    }).join("");
+    return '<div class="contacts-block" data-contacts="' + esc(blockKey) + '">' +
+      '<span class="lbl">Contacts</span>' + rows +
+      '<button type="button" class="sec" data-add-contact>+ Add contact</button></div>';
+  }
+
+  function bindContacts(root, getList, setList, rerender) {
+    var block = $("[data-contacts]", root);
+    if (!block) return;
+    $all("[data-ct]", block).forEach(function (inp) {
+      inp.addEventListener("input", function () {
+        var row = inp.closest("[data-contact-i]");
+        if (!row) return;
+        var i = +row.getAttribute("data-contact-i");
+        var list = getList().slice();
+        var patch = Object.assign({}, emptyContact(), list[i] || {});
+        patch[inp.getAttribute("data-ct")] = inp.value;
+        list[i] = patch;
+        setList(list);
+        scheduleSave();
+      });
+    });
+    $all("[data-del-contact]", block).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var list = getList().slice();
+        if (list.length <= 1) return;
+        list.splice(+btn.getAttribute("data-del-contact"), 1);
+        setList(list);
+        scheduleSave();
+        if (rerender) rerender();
+      });
+    });
+    var addBtn = $("[data-add-contact]", block);
+    if (addBtn) {
+      addBtn.addEventListener("click", function () {
+        setList(getList().concat([emptyContact()]));
+        scheduleSave();
+        if (rerender) rerender();
+      });
+    }
   }
 
   function lovValue(item) {
@@ -687,6 +796,7 @@
   /* ---------- Company ---------- */
   function renderCompany() {
     var c = state.company;
+    c.contacts = migrateContacts(c);
     var fields = [
       ["legalName", "Legal name", true],
       ["addressLine1", "Address line 1", true],
@@ -694,17 +804,14 @@
       ["city", "City", false],
       ["postalCode", "Postal / zip", false],
       ["country", "Country", false],
-      ["contactPhone", "Contact phone", false],
-      ["contactEmail", "Contact email", false],
       ["fdaRegistrationNo", "FDA registration no.", false],
-      ["ntn", "NTN", false],
-      ["defaultPortOfLoading", "Default port of loading", false]
+      ["ntn", "NTN", false]
     ];
     var html = fields.map(function (f) {
       var full = f[0] === "addressLine1" || f[0] === "addressLine2" ? " full" : "";
       return '<label class="field' + full + '">' + f[1] +
         '<input data-company="' + f[0] + '" value="' + esc(c[f[0]] || "") + '" /></label>';
-    }).join("");
+    }).join("") + contactsBlockHtml(c.contacts, "company");
     $("#companyForm").innerHTML = html;
     $all("[data-company]").forEach(function (inp) {
       inp.addEventListener("input", function () {
@@ -712,6 +819,10 @@
         scheduleSave();
       });
     });
+    bindContacts($("#companyForm"),
+      function () { return state.company.contacts; },
+      function (list) { state.company.contacts = list; },
+      renderCompany);
     renderBanks();
   }
 
@@ -1230,6 +1341,7 @@
     var pods = state.lovs.port_of_destination || [];
 
     root.innerHTML = state.customers.map(function (c, i) {
+      c.contacts = migrateContacts(c);
       var prodOpts = state.products.filter(function (p) { return !!p.sku; }).map(function (p) {
         return String(p.name || "").trim() || "Untitled product";
       });
@@ -1268,11 +1380,8 @@
         '<label class="field">City<input data-cf="addressCity" value="' + esc(c.addressCity) + '" /></label>' +
         '<label class="field">Postal / zip<input data-cf="addressPostalCode" value="' + esc(c.addressPostalCode) + '" /></label>' +
         '<label class="field">Country<input data-cf="addressCountry" value="' + esc(c.addressCountry) + '" /></label>' +
-        '<label class="field">Phone<input data-cf="contactPhone" value="' + esc(c.contactPhone) + '" /></label>' +
-        '<label class="field">Email<input data-cf="contactEmail" value="' + esc(c.contactEmail) + '" /></label>' +
-        '<label class="field">Phone 2<input data-cf="contactPhone2" value="' + esc(c.contactPhone2 || "") + '" /></label>' +
-        '<label class="field">Email 2<input data-cf="contactEmail2" value="' + esc(c.contactEmail2 || "") + '" /></label>' +
         '<label class="field">FDA registration (importer)<input data-cf="fdaRegistrationNo" value="' + esc(c.fdaRegistrationNo || "") + '" /></label>' +
+        contactsBlockHtml(c.contacts, "cust-" + i) +
         '<label class="field">Default port of destination' +
         multiSelectHtml(
           normalizeLovList(pods),
@@ -1314,6 +1423,11 @@
         el.addEventListener("change", handler);
         if (el.tagName === "INPUT") el.addEventListener("input", handler);
       });
+
+      bindContacts(card,
+        function () { return c.contacts; },
+        function (list) { c.contacts = list; },
+        renderCustomers);
 
       bindMultiSelect(card, "cpods",
         function () { return customerPorts(c); },
@@ -1391,20 +1505,20 @@
       return;
     }
     root.innerHTML = state.forwarders.map(function (f, i) {
+      f.contacts = migrateContacts(f);
       return '<div class="row-card" data-fwd-i="' + i + '">' +
         '<header><strong>' + esc(f.name || "Forwarder") + '</strong>' +
         '<button type="button" class="danger" data-del-fwd="' + i + '">Remove</button></header>' +
         '<div class="grid">' +
         '<label class="field"><span class="lbl">Id<span class="why">from your current systems</span></span>' +
         '<input data-ff="id" value="' + esc(f.id) + '" /></label>' +
-        '<label class="field"><span class="lbl">Name</span><input data-ff="name" value="' + esc(f.name) + '" /></label>' +
-        '<label class="field">Email<input data-ff="email" value="' + esc(f.email) + '" /></label>' +
-        '<label class="field">Phone<input data-ff="phone" value="' + esc(f.phone || "") + '" /></label>' +
+        '<label class="field"><span class="lbl">Company name</span><input data-ff="name" value="' + esc(f.name) + '" /></label>' +
         '<label class="field">BL path<select data-ff="blPath">' +
         '<option value="portal"' + (f.blPath === "portal" ? " selected" : "") + ">portal</option>" +
         '<option value="manual"' + (f.blPath === "manual" ? " selected" : "") + ">manual</option>" +
         "</select></label>" +
         '<label class="field">Notes<input data-ff="notes" value="' + esc(f.notes || "") + '" /></label>' +
+        contactsBlockHtml(f.contacts, "fwd-" + i) +
         "</div></div>";
     }).join("");
 
@@ -1416,6 +1530,10 @@
     });
     $all(".row-card", root).forEach(function (card) {
       var i = +card.getAttribute("data-fwd-i");
+      bindContacts(card,
+        function () { return state.forwarders[i].contacts; },
+        function (list) { state.forwarders[i].contacts = list; },
+        renderForwarders);
       $all("[data-ff]", card).forEach(function (el) {
         var h = function () {
           state.forwarders[i][el.getAttribute("data-ff")] = el.value;
@@ -1487,7 +1605,16 @@
       XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 31));
     }
 
-    sheet("Agro Hub", [Object.assign({}, state.company)]);
+    sheet("Agro Hub", [{
+      legalName: state.company.legalName,
+      addressLine1: state.company.addressLine1,
+      addressLine2: state.company.addressLine2,
+      city: state.company.city,
+      postalCode: state.company.postalCode,
+      country: state.company.country,
+      fdaRegistrationNo: state.company.fdaRegistrationNo,
+      ntn: state.company.ntn
+    }]);
     sheet("Banks", state.banks.map(function (b, i) {
       return {
         bank_id: b.id || ("bank-" + (i + 1)),
@@ -1497,6 +1624,33 @@
         is_default: b.isDefault ? "TRUE" : "FALSE"
       };
     }));
+
+    var contactRows = [];
+    migrateContacts(state.company).forEach(function (ct, i) {
+      contactRows.push({
+        scope: "company", owner_id: "agro-hub", sort_order: (i + 1) * 10,
+        name: ct.name, email: ct.email, phone: ct.phone
+      });
+    });
+    state.customers.forEach(function (c) {
+      migrateContacts(c).forEach(function (ct, i) {
+        contactRows.push({
+          scope: "customer", owner_id: c.id, sort_order: (i + 1) * 10,
+          name: ct.name, email: ct.email, phone: ct.phone
+        });
+      });
+    });
+    state.forwarders.forEach(function (f) {
+      migrateContacts(f).forEach(function (ct, i) {
+        contactRows.push({
+          scope: "forwarder", owner_id: f.id, sort_order: (i + 1) * 10,
+          name: ct.name, email: ct.email, phone: ct.phone
+        });
+      });
+    });
+    sheet("Contacts", contactRows.length ? contactRows : [{
+      scope: "", owner_id: "", sort_order: 10, name: "", email: "", phone: ""
+    }]);
 
     var lovRows = [];
     LOV_META.forEach(function (m) {
@@ -1545,10 +1699,6 @@
         address_city: c.addressCity,
         address_postal_code: c.addressPostalCode,
         address_country: c.addressCountry,
-        contact_phone: c.contactPhone,
-        contact_email: c.contactEmail,
-        contact_phone_2: c.contactPhone2 || "",
-        contact_email_2: c.contactEmail2 || "",
         default_ports_of_destination: customerPorts(c).join(" | "),
         fda_registration_no: c.fdaRegistrationNo || "",
         product_names: (c.productSkus || []).map(function (sku) {
@@ -1578,8 +1728,6 @@
       return {
         forwarder_id: f.id,
         name: f.name,
-        email: f.email,
-        phone: f.phone || "",
         bl_path: f.blPath,
         notes: f.notes || ""
       };
@@ -1645,10 +1793,7 @@
         addressCity: "",
         addressPostalCode: "",
         addressCountry: "",
-        contactPhone: "",
-        contactEmail: "",
-        contactPhone2: "",
-        contactEmail2: "",
+        contacts: [emptyContact()],
         fdaRegistrationNo: "",
         defaultPorts: [],
         productSkus: [],
@@ -1658,7 +1803,7 @@
     });
     $("#addForwarder").addEventListener("click", function () {
       state.forwarders.push({
-        id: uid("fwd"), name: "", email: "", phone: "", blPath: "manual", notes: ""
+        id: uid("fwd"), name: "", contacts: [emptyContact()], blPath: "manual", notes: ""
       });
       renderForwarders(); scheduleSave();
     });
