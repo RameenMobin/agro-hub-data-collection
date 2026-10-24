@@ -244,8 +244,8 @@
     <!-- 3 PRODUCTS -->
     <section class="panel" id="panel-products" data-panel="products">
       <h2>3. Products</h2>
-      <p class="hint">One card per product. Tick every packaging type that product can ship in — pulled from Dropdowns. No need to retype SKUs on a packaging sheet.</p>
-      <div class="warn-box" id="packWarn" hidden>Add at least one packaging type under Dropdowns before assigning packs to products.</div>
+      <p class="hint">One card per product. Tick packaging types and units of measurement from Dropdowns (multi-select). No need to retype SKUs on a packaging sheet.</p>
+      <div class="warn-box" id="packWarn" hidden>Add packaging and UoM values under Dropdowns before assigning them to products.</div>
       <div id="productsList"></div>
       <button type="button" class="sec" id="addProduct">+ Add product</button>
       <div class="nav-footer">
@@ -367,6 +367,7 @@
         port_of_loading: ["Karachi Port", "Port Qasim"],
         port_of_destination: ["JACKSONVILLE, U.S.A.", "NEW YORK, U.S.A."],
         packaging: ["25 kg bags", "50 kg bags", "Bulk (kg)"],
+        uom: ["KG", "bag", "LB", "MT"],
         pallet_type: ["Wooden pallets", "Plastic / other"]
       },
       products: [],
@@ -422,8 +423,11 @@
         state.company = Object.assign({}, base.company, parsed.company || {});
         state.sampleChecks = Object.assign({ docs: {}, emails: {} }, parsed.sampleChecks || {});
         state.products = (parsed.products || []).map(function (p) {
+          var uoms = p.uoms != null ? p.uoms : p.uom;
+          if (typeof uoms === "string") uoms = uoms ? [uoms] : [];
           return Object.assign({}, p, {
-            packaging: normalizePackList(p.packaging || p.packagingCodes || [])
+            packaging: normalizePackList(p.packaging || p.packagingCodes || []),
+            uoms: normalizePackList(uoms || [])
           });
         });
         state.customers = (parsed.customers || []).map(function (c) {
@@ -554,6 +558,7 @@
     { key: "port_of_loading", title: "Ports of loading" },
     { key: "port_of_destination", title: "Ports of destination" },
     { key: "packaging", title: "Packaging types" },
+    { key: "uom", title: "Units of measurement" },
     { key: "pallet_type", title: "Pallet types" }
   ];
 
@@ -604,6 +609,10 @@
     return normalizeLovList(state.lovs.packaging);
   }
 
+  function uomOptions() {
+    return normalizeLovList(state.lovs.uom);
+  }
+
   function labelForPack(value) {
     return value || "";
   }
@@ -612,23 +621,33 @@
     return normalizePackList(p.packaging || p.packagingCodes || []);
   }
 
+  function productUoms(p) {
+    var u = p.uoms != null ? p.uoms : p.uom;
+    if (typeof u === "string") return u ? [u] : [];
+    return normalizePackList(u || []);
+  }
+
+  function chipGrid(options, selected, dataAttr) {
+    if (!options.length) return '<span class="meta">Add values under Dropdowns first</span>';
+    return options.map(function (val) {
+      var on = selected.indexOf(val) >= 0;
+      return '<label class="chip' + (on ? " on" : "") + '">' +
+        '<input type="checkbox" data-' + dataAttr + '="' + esc(val) + '"' + (on ? " checked" : "") + " />" +
+        esc(val) + "</label>";
+    }).join("");
+  }
+
   /* ---------- Products ---------- */
   function renderProducts() {
     var packs = packagingOptions();
-    $("#packWarn").hidden = packs.length > 0;
+    var uoms = uomOptions();
+    $("#packWarn").hidden = packs.length > 0 && uoms.length > 0;
     var root = $("#productsList");
     if (!state.products.length) {
       root.innerHTML = '<div class="empty">No products yet — add your catalog here first</div>';
       return;
     }
     root.innerHTML = state.products.map(function (p, i) {
-      var selected = productPacks(p);
-      var chips = packs.map(function (val) {
-        var on = selected.indexOf(val) >= 0;
-        return '<label class="chip' + (on ? " on" : "") + '">' +
-          '<input type="checkbox" data-pack="' + esc(val) + '"' + (on ? " checked" : "") + " />" +
-          esc(val) + "</label>";
-      }).join("") || '<span class="meta">No packaging LOVs yet</span>';
       return '<div class="row-card" data-prod-i="' + i + '">' +
         '<header><div><strong>' + esc(p.name || "Untitled product") + '</strong>' +
         '<div class="meta">' + esc(p.sku || "no sku") +
@@ -638,12 +657,14 @@
         '<label class="field">SKU / id<input data-pf="sku" value="' + esc(p.sku) + '" /></label>' +
         '<label class="field">HS code<input data-pf="hsCode" value="' + esc(p.hsCode) + '" /></label>' +
         '<label class="field full">Product name / description<input data-pf="name" value="' + esc(p.name) + '" /></label>' +
-        '<label class="field">Unit of measurement<input data-pf="uom" value="' + esc(p.uom) + '" placeholder="KG / bag / LB" /></label>' +
-        '<label class="field">Notes<input data-pf="notes" value="' + esc(p.notes || "") + '" /></label>' +
+        '<label class="field full">Notes<input data-pf="notes" value="' + esc(p.notes || "") + '" /></label>' +
         '</div>' +
+        '<label class="field" style="margin-top:10px">Unit of measurement' +
+        '<span class="why">Multi-select from Dropdowns → Units of measurement</span></label>' +
+        '<div class="chip-grid">' + chipGrid(uoms, productUoms(p), "uom") + "</div>" +
         '<label class="field" style="margin-top:10px">Packaging types for this product' +
         '<span class="why">Select all that apply — customers will see these when they pick this product</span></label>' +
-        '<div class="chip-grid">' + chips + "</div></div>";
+        '<div class="chip-grid">' + chipGrid(packs, productPacks(p), "pack") + "</div></div>";
     }).join("");
 
     $all("[data-del-prod]", root).forEach(function (btn) {
@@ -684,18 +705,22 @@
           scheduleSave();
         });
       });
-      $all("[data-pack]", card).forEach(function (cb) {
-        cb.addEventListener("change", function () {
-          var val = cb.getAttribute("data-pack");
-          var list = state.products[i].packaging || (state.products[i].packaging = []);
-          var ix = list.indexOf(val);
-          if (cb.checked && ix < 0) list.push(val);
-          if (!cb.checked && ix >= 0) list.splice(ix, 1);
-          delete state.products[i].packagingCodes;
-          cb.closest(".chip").classList.toggle("on", cb.checked);
-          scheduleSave();
+      function bindMulti(attr, field, cleanup) {
+        $all("[data-" + attr + "]", card).forEach(function (cb) {
+          cb.addEventListener("change", function () {
+            var val = cb.getAttribute("data-" + attr);
+            var list = state.products[i][field] || (state.products[i][field] = []);
+            var ix = list.indexOf(val);
+            if (cb.checked && ix < 0) list.push(val);
+            if (!cb.checked && ix >= 0) list.splice(ix, 1);
+            if (cleanup) cleanup(state.products[i]);
+            cb.closest(".chip").classList.toggle("on", cb.checked);
+            scheduleSave();
+          });
         });
-      });
+      }
+      bindMulti("pack", "packaging", function (p) { delete p.packagingCodes; });
+      bindMulti("uom", "uoms", function (p) { delete p.uom; });
     });
   }
 
@@ -920,7 +945,8 @@
       "<li><strong>" + state.products.length + "</strong> products · <strong>" +
       state.customers.length + "</strong> customers · <strong>" +
       state.forwarders.length + "</strong> forwarders</li>" +
-      "<li><strong>" + packagingOptions().length + "</strong> packaging types in LOVs</li>" +
+      "<li><strong>" + packagingOptions().length + "</strong> packaging · <strong>" +
+      uomOptions().length + "</strong> UoM values in LOVs</li>" +
       "<li>Company: " + esc(state.company.legalName || "(not set)") + "</li>" +
       "</ul>";
 
@@ -993,7 +1019,7 @@
         sku: p.sku,
         product_name_description: p.name,
         hs_code: p.hsCode,
-        unit_of_measurement: p.uom,
+        units_of_measurement: productUoms(p).join(" | "),
         packaging_types: packs.join(" | "),
         notes: p.notes || ""
       };
@@ -1103,7 +1129,7 @@
         sku: uid("sku").toUpperCase().replace("SKU-", "AH-"),
         name: "",
         hsCode: "",
-        uom: "KG",
+        uoms: [],
         packaging: [],
         notes: ""
       });

@@ -42,13 +42,14 @@ folder is configured as the root directory.
   "banks": [],
   "lovs": {
     "payment_terms": ["Net 30", "CAD"],
-    "packaging": ["25 kg bags", "Bulk (kg)"]
+    "packaging": ["25 kg bags", "Bulk (kg)"],
+    "uom": ["KG", "bag", "LB", "MT"]
   },
   "products": [{
     "sku": "",
     "name": "",
     "hsCode": "",
-    "uom": "KG",
+    "uoms": ["KG", "bag"],
     "packaging": ["25 kg bags", "Bulk (kg)"]
   }],
   "customers": [{
