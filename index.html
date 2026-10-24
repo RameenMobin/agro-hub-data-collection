@@ -190,13 +190,17 @@
       display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
       margin-bottom: 6px;
     }
+    .lov-list-hs { grid-template-columns: 1fr; }
     .lov-row {
       display: grid; grid-template-columns: 1fr auto; gap: 4px; align-items: center;
     }
+    .lov-row-hs { grid-template-columns: minmax(90px, 0.45fr) 1fr auto; }
     .lov-row input { width: 100%; height: 28px; padding: 3px 7px; font-size: 12.5px; }
     .lov-row .danger { padding: 2px 7px; font-size: 12px; }
     @media (max-width: 700px) {
       .lov-list { grid-template-columns: 1fr; }
+      .lov-row-hs { grid-template-columns: 1fr auto; }
+      .lov-row-hs [data-hs-name] { grid-column: 1 / -1; }
     }
     .nav-footer {
       display: flex; justify-content: space-between; gap: 10px;
@@ -309,7 +313,7 @@
     <!-- 3 PRODUCTS -->
     <section class="panel" id="panel-products" data-panel="products">
       <h2>3. Products</h2>
-      <p class="hint">Catalog items with multi-select HS / UoM / packaging. Add new values in the dropdown — they join the LOVs.</p>
+      <p class="hint">Pick one HS code first — the product name fills from the dropdown list (you can still edit it). UoM and packaging stay multi-select.</p>
       <div class="warn-box" id="packWarn" hidden>Add packaging and UoM values under Dropdowns before assigning them to products.</div>
       <div id="productsList"></div>
       <button type="button" class="sec" id="addProduct">+ Add product</button>
@@ -433,20 +437,20 @@
         port_of_destination: ["JACKSONVILLE, U.S.A.", "NEW YORK, U.S.A."],
         packaging: ["25 kg bags", "50 kg bags", "Bulk (kg)"],
         uom: ["KG", "bag", "LB", "MT"],
-        // Seed with codes Agro Hub already uses; client can add more on the fly
+        // code + default product name (name is editable on the product card)
         hs_codes: [
-          "2501.00",
-          "2501.0090",
-          "1006.30",
-          "1006.40",
-          "0909.31",
-          "0713.10",
-          "0713.20",
-          "1001.19",
-          "1005.90",
-          "1101.00",
-          "1207.40",
-          "1515.90"
+          { code: "2501.00", name: "Himalayan Pink Salt" },
+          { code: "2501.0090", name: "Himalayan Pink Salt" },
+          { code: "1006.30", name: "Basmati / long grain rice" },
+          { code: "1006.40", name: "Broken rice" },
+          { code: "0909.31", name: "Cumin seeds" },
+          { code: "0713.10", name: "Dried peas" },
+          { code: "0713.20", name: "Chickpeas" },
+          { code: "1001.19", name: "Wheat" },
+          { code: "1005.90", name: "Maize / corn" },
+          { code: "1101.00", name: "Wheat flour" },
+          { code: "1207.40", name: "Sesame seeds" },
+          { code: "1515.90", name: "Vegetable oils" }
         ],
         pallet_type: ["Wooden pallets", "Plastic / other"]
       },
@@ -492,6 +496,23 @@
     var defaults = defaultState().lovs;
     var out = {};
     Object.keys(defaults).forEach(function (k) {
+      if (k === "hs_codes") {
+        var savedHs = normalizeHsLov((savedLovs && savedLovs[k]) || []);
+        var seedHs = normalizeHsLov(defaults[k] || []);
+        var seenHs = {};
+        out[k] = [];
+        savedHs.concat(seedHs).forEach(function (entry) {
+          var key = entry.code.toLowerCase();
+          if (seenHs[key]) {
+            // Prefer saved code; fill missing name from seed
+            if (!seenHs[key].name && entry.name) seenHs[key].name = entry.name;
+            return;
+          }
+          seenHs[key] = entry;
+          out[k].push(entry);
+        });
+        return;
+      }
       var saved = normalizeLovList((savedLovs && savedLovs[k]) || []);
       var seed = normalizeLovList(defaults[k] || []);
       // Saved values first (client edits), then any missing seeds
@@ -507,7 +528,7 @@
     // Keep any extra LOV keys the client may have
     Object.keys(savedLovs || {}).forEach(function (k) {
       if (out[k]) return;
-      out[k] = normalizeLovList(savedLovs[k]);
+      out[k] = k === "hs_codes" ? normalizeHsLov(savedLovs[k]) : normalizeLovList(savedLovs[k]);
     });
     return out;
   }
@@ -527,23 +548,15 @@
         state.products = (parsed.products || []).map(function (p) {
           var uoms = p.uoms != null ? p.uoms : p.uom;
           if (typeof uoms === "string") uoms = uoms ? [uoms] : [];
-          var hs = p.hsCodes != null ? p.hsCodes : p.hsCode;
-          if (typeof hs === "string") hs = hs ? [hs] : [];
-          var hsList = normalizePackList(hs || []);
-          hsList.forEach(function (code) {
-            var key = String(code).trim();
-            if (!key) return;
-            state.lovs.hs_codes = state.lovs.hs_codes || [];
-            var exists = state.lovs.hs_codes.some(function (v) {
-              return v.toLowerCase() === key.toLowerCase();
-            });
-            if (!exists) state.lovs.hs_codes.push(key);
-          });
-          return Object.assign({}, p, {
+          var hsCode = productHsCode(p);
+          if (hsCode) ensureHsLov(hsCode, p.name || "");
+          var next = Object.assign({}, p, {
             packaging: normalizePackList(p.packaging || p.packagingCodes || []),
             uoms: normalizePackList(uoms || []),
-            hsCodes: hsList
+            hsCode: hsCode
           });
+          delete next.hsCodes;
+          return next;
         });
         state.customers = (parsed.customers || []).map(function (c) {
           var pp = {};
@@ -583,6 +596,77 @@
 
   function normalizePackList(list) {
     return (list || []).map(lovValue).filter(Boolean);
+  }
+
+  /** HS LOV entries: { code, name } — name is the suggested product description. */
+  function normalizeHsEntry(v) {
+    if (v == null) return null;
+    if (typeof v === "string") {
+      var s = String(v).trim();
+      if (!s) return null;
+      var parts = s.split(/\s+[—–]\s+|\|/);
+      if (parts.length >= 2) {
+        return { code: parts[0].trim(), name: parts.slice(1).join(" — ").trim() };
+      }
+      return { code: s, name: "" };
+    }
+    if (typeof v === "object") {
+      var code = String(v.code || v.value || "").trim();
+      if (!code) return null;
+      return { code: code, name: String(v.name || v.label || "").trim() };
+    }
+    return null;
+  }
+
+  function normalizeHsLov(list) {
+    var out = [];
+    var seen = {};
+    (list || []).forEach(function (v) {
+      var e = normalizeHsEntry(v);
+      if (!e) return;
+      var key = e.code.toLowerCase();
+      if (seen[key]) {
+        if (!seen[key].name && e.name) seen[key].name = e.name;
+        return;
+      }
+      seen[key] = e;
+      out.push(e);
+    });
+    return out;
+  }
+
+  function hsNameForCode(code) {
+    var key = String(code || "").trim().toLowerCase();
+    if (!key) return "";
+    var hit = normalizeHsLov(state.lovs.hs_codes || []).find(function (e) {
+      return e.code.toLowerCase() === key;
+    });
+    return hit ? hit.name : "";
+  }
+
+  function ensureHsLov(rawCode, rawName) {
+    var code = String(rawCode || "").trim();
+    if (!code) return "";
+    state.lovs.hs_codes = normalizeHsLov(state.lovs.hs_codes || []);
+    var existing = state.lovs.hs_codes.find(function (e) {
+      return e.code.toLowerCase() === code.toLowerCase();
+    });
+    var name = String(rawName || "").trim();
+    if (existing) {
+      if (!existing.name && name) existing.name = name;
+      return existing.code;
+    }
+    state.lovs.hs_codes.push({ code: code, name: name });
+    return code;
+  }
+
+  function productHsCode(p) {
+    if (!p) return "";
+    if (p.hsCode != null && String(p.hsCode).trim()) return String(p.hsCode).trim();
+    var list = p.hsCodes;
+    if (typeof list === "string") return list.trim();
+    if (Array.isArray(list) && list.length) return String(list[0] || "").trim();
+    return "";
   }
 
   function goStep(id) {
@@ -699,6 +783,21 @@
     state.lovs = mergeLovDefaults(state.lovs || {});
     var root = $("#lovsRoot");
     root.innerHTML = LOV_META.map(function (m) {
+      if (m.key === "hs_codes") {
+        var hsRows = normalizeHsLov(state.lovs.hs_codes);
+        state.lovs.hs_codes = hsRows;
+        return '<div class="lov-block" data-lov="hs_codes">' +
+          "<h4>HS / HTS codes <span style=\"font-weight:400;color:var(--muted);font-size:11px\">" +
+          hsRows.length + "</span></h4>" +
+          '<p style="margin:0 0 6px;font-size:11.5px;color:var(--muted)">Code + default product name. Choosing the code on a product fills the name (still editable).</p>' +
+          '<div class="lov-list lov-list-hs">' + hsRows.map(function (entry, i) {
+            return '<div class="lov-row lov-row-hs" data-i="' + i + '">' +
+              '<input placeholder="HS code" data-hs-code value="' + esc(entry.code) + '" />' +
+              '<input placeholder="Default product name" data-hs-name value="' + esc(entry.name) + '" />' +
+              '<button type="button" class="danger" data-del-lov="' + i + '">×</button></div>';
+          }).join("") + "</div>" +
+          '<button type="button" class="sec" data-add-lov="hs_codes">+ Add</button></div>';
+      }
       var rows = normalizeLovList(state.lovs[m.key]);
       state.lovs[m.key] = rows;
       return '<div class="lov-block" data-lov="' + m.key + '">' +
@@ -716,7 +815,7 @@
       btn.addEventListener("click", function () {
         var k = btn.getAttribute("data-add-lov");
         state.lovs[k] = state.lovs[k] || [];
-        state.lovs[k].push("");
+        state.lovs[k].push(k === "hs_codes" ? { code: "", name: "" } : "");
         renderLovs(); scheduleSave();
       });
     });
@@ -728,6 +827,28 @@
           renderLovs(); scheduleSave();
         });
       });
+      if (key === "hs_codes") {
+        $all(".lov-row-hs", block).forEach(function (row) {
+          var i = +row.getAttribute("data-i");
+          var codeInp = $("[data-hs-code]", row);
+          var nameInp = $("[data-hs-name]", row);
+          if (codeInp) {
+            codeInp.addEventListener("input", function () {
+              state.lovs.hs_codes[i] = state.lovs.hs_codes[i] || { code: "", name: "" };
+              state.lovs.hs_codes[i].code = codeInp.value;
+              scheduleSave();
+            });
+          }
+          if (nameInp) {
+            nameInp.addEventListener("input", function () {
+              state.lovs.hs_codes[i] = state.lovs.hs_codes[i] || { code: "", name: "" };
+              state.lovs.hs_codes[i].name = nameInp.value;
+              scheduleSave();
+            });
+          }
+        });
+        return;
+      }
       $all(".lov-row", block).forEach(function (row) {
         var i = +row.getAttribute("data-i");
         var inp = $("[data-lov-val]", row);
@@ -749,7 +870,7 @@
   }
 
   function hsOptions() {
-    return normalizeLovList(state.lovs.hs_codes);
+    return normalizeHsLov(state.lovs.hs_codes).map(function (e) { return e.code; });
   }
 
   /** Add a display value to an LOV list if missing; returns trimmed value or "". */
@@ -782,12 +903,6 @@
     return normalizePackList(u || []);
   }
 
-  function productHs(p) {
-    var h = p.hsCodes != null ? p.hsCodes : p.hsCode;
-    if (typeof h === "string") return h ? [h] : [];
-    return normalizePackList(h || []);
-  }
-
   function customerPorts(c) {
     var p = c.defaultPorts != null ? c.defaultPorts : c.defaultPortOfDestination;
     if (typeof p === "string") return p ? [p] : [];
@@ -815,6 +930,85 @@
     return '<span class="msel-tags">' + selected.map(function (v) {
       return '<span class="msel-tag">' + esc(v) + "</span>";
     }).join("") + "</span>";
+  }
+
+  /** Single-select dropdown (radio). Option labels may include a secondary hint. */
+  function singleSelectHtml(options, selected, mselKey, placeholder, addPlaceholder, labelFn) {
+    var tag = selected
+      ? '<span class="msel-tags"><span class="msel-tag">' + esc(selected) + "</span></span>"
+      : '<span class="ph">' + esc(placeholder || "Select…") + "</span>";
+    var opts = options.length
+      ? options.map(function (val) {
+          var lab = labelFn ? labelFn(val) : val;
+          var on = selected === val;
+          return '<label class="msel-opt"><input type="radio" name="' + esc(mselKey) + '" data-ssel-opt="' + esc(val) + '"' +
+            (on ? " checked" : "") + " />" + esc(lab) + "</label>";
+        }).join("")
+      : '<div class="msel-opt" style="color:var(--muted)">No options yet — add below</div>';
+    return '<div class="msel" data-msel="' + esc(mselKey) + '">' +
+      '<button type="button" class="msel-toggle" data-msel-toggle>' + tag + "</button>" +
+      '<div class="msel-panel">' + opts +
+      '<div class="msel-add"><input data-msel-new placeholder="' + esc(addPlaceholder || "Add new…") + '" />' +
+      '<button type="button" class="sec" data-msel-add>Add</button></div></div></div>';
+  }
+
+  function bindSingleSelect(card, mselKey, getValue, setValue, onAdd, placeholder, onChange) {
+    var root = card.querySelector('[data-msel="' + mselKey + '"]');
+    if (!root) return;
+    var toggle = $("[data-msel-toggle]", root);
+    var panel = $(".msel-panel", root);
+
+    function refreshToggle() {
+      if (!toggle) return;
+      var selected = getValue() || "";
+      toggle.innerHTML = selected
+        ? '<span class="msel-tags"><span class="msel-tag">' + esc(selected) + "</span></span>"
+        : '<span class="ph">' + esc(placeholder || "Select…") + "</span>";
+    }
+
+    function open() {
+      $all(".msel.open").forEach(function (el) {
+        if (el !== root) el.classList.remove("open");
+      });
+      root.classList.add("open");
+    }
+
+    if (toggle) {
+      toggle.addEventListener("click", function (e) {
+        e.preventDefault();
+        if (root.classList.contains("open")) root.classList.remove("open");
+        else open();
+      });
+    }
+
+    $all("[data-ssel-opt]", root).forEach(function (rb) {
+      rb.addEventListener("change", function () {
+        if (!rb.checked) return;
+        setValue(rb.getAttribute("data-ssel-opt"));
+        scheduleSave();
+        root.classList.remove("open");
+        if (onChange) onChange();
+        else refreshToggle();
+      });
+    });
+
+    var addBtn = $("[data-msel-add]", root);
+    if (addBtn) {
+      addBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var inp = $("[data-msel-new]", root);
+        var raw = inp ? inp.value : "";
+        var val = onAdd ? onAdd(raw) : String(raw || "").trim();
+        if (!val) return;
+        setValue(val);
+        scheduleSave();
+        if (onChange) onChange();
+        else refreshToggle();
+      });
+    }
+
+    if (panel) panel.addEventListener("mousedown", function (e) { e.stopPropagation(); });
   }
 
   function bindMultiSelect(card, mselKey, getList, setList, lovKey, placeholder, onAddRerender, onChangeRerender) {
@@ -878,6 +1072,21 @@
   }
 
   /* ---------- Products ---------- */
+  function applyHsToProduct(p, code, nameInput) {
+    var prevCode = productHsCode(p);
+    var prevDefault = hsNameForCode(prevCode);
+    var next = ensureHsLov(code, "");
+    p.hsCode = next;
+    delete p.hsCodes;
+    var suggested = hsNameForCode(next);
+    var curName = String(p.name || "").trim();
+    // Auto-fill when empty, or still matching the previous HS default (user hasn't customized)
+    if (suggested && (!curName || curName === prevDefault)) {
+      p.name = suggested;
+      if (nameInput) nameInput.value = suggested;
+    }
+  }
+
   function renderProducts() {
     var packs = packagingOptions();
     var uoms = uomOptions();
@@ -889,23 +1098,27 @@
       return;
     }
     root.innerHTML = state.products.map(function (p, i) {
-      var hsSel = productHs(p);
+      var hsSel = productHsCode(p);
       return '<div class="row-card" data-prod-i="' + i + '">' +
         '<header><div><strong>' + esc(p.name || "Untitled product") + '</strong>' +
-        '<div class="meta">' + esc(p.sku || "no sku") + "</div></div>" +
+        '<div class="meta">' + esc(p.sku || "no sku") + (hsSel ? " · " + esc(hsSel) : "") + "</div></div>" +
         '<button type="button" class="danger" data-del-prod="' + i + '">Remove</button></header>' +
         '<div class="grid">' +
-        '<label class="field"><span class="lbl">SKU / id<span class="why">from your current systems</span></span>' +
-        '<input data-pf="sku" value="' + esc(p.sku) + '" /></label>' +
-        '<label class="field"><span class="lbl">Product name / description</span>' +
-        '<input data-pf="name" value="' + esc(p.name) + '" /></label>' +
-        '<label class="field">HS / HTS codes' +
-        multiSelectHtml(hsList, hsSel, "hs", "Select HS codes…", "Add HS code") +
+        '<label class="field">HS / HTS code' +
+        singleSelectHtml(hsList, hsSel, "hs-" + i, "Select HS code…", "Add HS code", function (code) {
+          var n = hsNameForCode(code);
+          return n ? code + " — " + n : code;
+        }) +
         "</label>" +
         '<label class="field">Unit of measurement' +
         multiSelectHtml(uoms, productUoms(p), "uom", "Select UoM…", "Add UoM") +
         "</label>" +
-        '<label class="field full">Packaging types' +
+        '<label class="field full"><span class="lbl">Product name / description' +
+        '<span class="why">fills from HS — edit if needed</span></span>' +
+        '<input data-pf="name" value="' + esc(p.name) + '" /></label>' +
+        '<label class="field"><span class="lbl">SKU / id<span class="why">from your current systems</span></span>' +
+        '<input data-pf="sku" value="' + esc(p.sku) + '" /></label>' +
+        '<label class="field">Packaging types' +
         multiSelectHtml(packs, productPacks(p), "pack", "Select packaging…", "Add packaging") +
         "</label>" +
         '<label class="field full">Notes<input data-pf="notes" value="' + esc(p.notes || "") + '" /></label>' +
@@ -944,18 +1157,40 @@
           if (f === "name") {
             var t = $("header strong", card);
             if (t) t.textContent = inp.value || "Untitled product";
+            // Keep LOV default name in sync when product name is the only hint for this HS
+            var code = productHsCode(state.products[i]);
+            if (code) {
+              var entry = normalizeHsLov(state.lovs.hs_codes).find(function (e) {
+                return e.code.toLowerCase() === code.toLowerCase();
+              });
+              if (entry && !entry.name) entry.name = inp.value;
+            }
           }
           scheduleSave();
         });
       });
 
-      bindMultiSelect(card, "hs",
-        function () { return productHs(state.products[i]); },
-        function (list) {
-          state.products[i].hsCodes = list;
-          delete state.products[i].hsCode;
+      bindSingleSelect(card, "hs-" + i,
+        function () { return productHsCode(state.products[i]); },
+        function (code) {
+          applyHsToProduct(state.products[i], code, $("[data-pf=name]", card));
+          var t = $("header strong", card);
+          if (t) t.textContent = state.products[i].name || "Untitled product";
+          var meta = $("header .meta", card);
+          if (meta) {
+            meta.textContent = (state.products[i].sku || "no sku") +
+              (state.products[i].hsCode ? " · " + state.products[i].hsCode : "");
+          }
         },
-        "hs_codes", "Select HS codes…", renderProducts, null);
+        function (raw) {
+          var code = String(raw || "").trim();
+          if (!code) return "";
+          ensureHsLov(code, state.products[i].name || "");
+          return code;
+        },
+        "Select HS code…",
+        function () { renderProducts(); });
+
       bindMultiSelect(card, "uom",
         function () { return productUoms(state.products[i]); },
         function (list) {
@@ -1109,7 +1344,7 @@
             if (!sku) {
               sku = uid("sku").toUpperCase().replace("SKU-", "AH-");
               state.products.push({
-                sku: sku, name: name, hsCodes: [], uoms: [], packaging: [], notes: ""
+                sku: sku, name: name, hsCode: "", uoms: [], packaging: [], notes: ""
               });
             }
             nextSkus.push(sku);
@@ -1265,8 +1500,19 @@
 
     var lovRows = [];
     LOV_META.forEach(function (m) {
+      if (m.key === "hs_codes") {
+        normalizeHsLov(state.lovs.hs_codes).forEach(function (entry, i) {
+          lovRows.push({
+            list_name: m.key,
+            value: entry.code,
+            extra: entry.name || "",
+            sort_order: (i + 1) * 10
+          });
+        });
+        return;
+      }
       normalizeLovList(state.lovs[m.key]).forEach(function (val, i) {
-        lovRows.push({ list_name: m.key, value: val, sort_order: (i + 1) * 10 });
+        lovRows.push({ list_name: m.key, value: val, extra: "", sort_order: (i + 1) * 10 });
       });
     });
     sheet("LOVs", lovRows);
@@ -1276,7 +1522,7 @@
       return {
         sku: p.sku,
         product_name_description: p.name,
-        hs_codes: productHs(p).join(" | "),
+        hs_code: productHsCode(p),
         units_of_measurement: productUoms(p).join(" | "),
         packaging_types: packs.join(" | "),
         notes: p.notes || ""
@@ -1384,7 +1630,7 @@
       state.products.push({
         sku: uid("sku").toUpperCase().replace("SKU-", "AH-"),
         name: "",
-        hsCodes: [],
+        hsCode: "",
         uoms: [],
         packaging: [],
         notes: ""
