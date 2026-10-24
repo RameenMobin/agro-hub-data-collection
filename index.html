@@ -680,7 +680,8 @@
         (p.hsCode ? " · HS " + esc(p.hsCode) : "") + "</div></div>" +
         '<button type="button" class="danger" data-del-prod="' + i + '">Remove</button></header>' +
         '<div class="grid">' +
-        '<label class="field">SKU / id<input data-pf="sku" value="' + esc(p.sku) + '" /></label>' +
+        '<label class="field">SKU / id<span class="why">from your current systems</span>' +
+        '<input data-pf="sku" value="' + esc(p.sku) + '" /></label>' +
         '<label class="field">HS code<input data-pf="hsCode" value="' + esc(p.hsCode) + '" /></label>' +
         '<label class="field full">Product name / description<input data-pf="name" value="' + esc(p.name) + '" /></label>' +
         '<label class="field full">Notes<input data-pf="notes" value="' + esc(p.notes || "") + '" /></label>' +
@@ -837,7 +838,8 @@
         '<div class="meta">' + esc(c.id || "") + "</div></div>" +
         '<button type="button" class="danger" data-del-cust="' + i + '">Remove</button></header>' +
         '<div class="grid">' +
-        '<label class="field">Customer id<input data-cf="id" value="' + esc(c.id) + '" /></label>' +
+        '<label class="field">Customer id<span class="why">from your current systems</span>' +
+        '<input data-cf="id" value="' + esc(c.id) + '" /></label>' +
         '<label class="field">Name<input data-cf="name" value="' + esc(c.name) + '" /></label>' +
         '<label class="field full">Street<input data-cf="addressStreet" value="' + esc(c.addressStreet) + '" /></label>' +
         '<label class="field">City<input data-cf="addressCity" value="' + esc(c.addressCity) + '" /></label>' +
@@ -992,7 +994,8 @@
         '<header><strong>' + esc(f.name || "Forwarder") + '</strong>' +
         '<button type="button" class="danger" data-del-fwd="' + i + '">Remove</button></header>' +
         '<div class="grid">' +
-        '<label class="field">Id<input data-ff="id" value="' + esc(f.id) + '" /></label>' +
+        '<label class="field">Id<span class="why">from your current systems</span>' +
+        '<input data-ff="id" value="' + esc(f.id) + '" /></label>' +
         '<label class="field">Name<input data-ff="name" value="' + esc(f.name) + '" /></label>' +
         '<label class="field">Email<input data-ff="email" value="' + esc(f.email) + '" /></label>' +
         '<label class="field">Phone<input data-ff="phone" value="' + esc(f.phone || "") + '" /></label>' +
