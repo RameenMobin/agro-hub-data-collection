@@ -97,36 +97,77 @@
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
     .grid .full { grid-column: 1 / -1; }
     label.field {
-      display: flex; flex-direction: column; gap: 4px;
+      display: flex; flex-direction: column; gap: 3px;
       font-size: 12px; font-weight: 600; color: var(--ink);
     }
-    label.field .why { font-weight: 400; color: var(--muted); font-size: 11.5px; }
+    label.field .why { font-weight: 400; color: var(--muted); font-size: 11px; }
     input, select, textarea {
       font: inherit; color: var(--body);
       border: 1px solid var(--line); border-radius: 7px;
-      padding: 8px 10px; background: #fff;
+      padding: 6px 9px; background: #fff;
     }
     input:focus, select:focus, textarea:focus {
       outline: 2px solid rgba(54, 187, 201, 0.35); border-color: var(--cyan);
     }
-    textarea { min-height: 72px; resize: vertical; }
+    textarea { min-height: 52px; resize: vertical; }
     .row-card {
       border: 1px solid var(--line); border-radius: 10px;
-      padding: 14px 14px 12px; margin: 0 0 12px; background: #fafcfe;
+      padding: 12px 12px 10px; margin: 0 0 10px; background: #fafcfe;
     }
     .row-card header {
-      display: flex; justify-content: space-between; align-items: flex-start;
-      gap: 10px; margin-bottom: 10px;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 10px; margin-bottom: 8px;
     }
-    .row-card header strong { color: var(--ink); font-size: 14px; }
-    .row-card header .meta { font-size: 12px; color: var(--muted); }
-    .chip-grid {
-      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px;
+    .row-card header strong { color: var(--ink); font-size: 13.5px; }
+    .row-card header .meta { font-size: 11.5px; color: var(--muted); }
+    .row-card .grid { gap: 8px 12px; }
+    .msel { position: relative; margin-top: 2px; }
+    .msel-toggle {
+      width: 100%; text-align: left; font: inherit; font-weight: 400;
+      background: #fff; color: var(--body); border: 1px solid var(--line);
+      border-radius: 7px; padding: 6px 32px 6px 9px; cursor: pointer;
+      position: relative; min-height: 34px;
     }
+    .msel-toggle::after {
+      content: ""; position: absolute; right: 12px; top: 50%;
+      width: 6px; height: 6px; border-right: 1.5px solid var(--muted);
+      border-bottom: 1.5px solid var(--muted); transform: translateY(-60%) rotate(45deg);
+    }
+    .msel-toggle .ph { color: var(--muted); }
+    .msel-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .msel-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #eefbfc; border: 1px solid #b7e6ec; color: var(--ink);
+      border-radius: 999px; padding: 1px 8px; font-size: 12px; max-width: 100%;
+    }
+    .msel-tag button {
+      border: 0; background: transparent; color: var(--muted);
+      padding: 0; font-size: 14px; line-height: 1; cursor: pointer;
+    }
+    .msel-panel {
+      display: none; position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 4px);
+      background: #fff; border: 1px solid var(--line); border-radius: 8px;
+      box-shadow: 0 10px 28px rgba(7, 35, 56, 0.12); padding: 6px; max-height: 220px;
+      overflow: auto;
+    }
+    .msel.open .msel-panel { display: block; }
+    .msel-opt {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 400;
+    }
+    .msel-opt:hover { background: var(--soft); }
+    .msel-opt input { margin: 0; accent-color: var(--navy); }
+    .msel-add {
+      display: grid; grid-template-columns: 1fr auto; gap: 6px;
+      padding: 6px 4px 2px; border-top: 1px solid var(--line); margin-top: 4px;
+    }
+    .msel-add input { padding: 5px 8px; font-size: 12.5px; }
+    .msel-add button { padding: 5px 10px; font-size: 12px; }
+    .chip-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
     .chip {
-      display: inline-flex; align-items: center; gap: 6px;
+      display: inline-flex; align-items: center; gap: 5px;
       border: 1px solid var(--line); background: #fff;
-      border-radius: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer;
+      border-radius: 8px; padding: 4px 8px; font-size: 12.5px; cursor: pointer;
       user-select: none;
     }
     .chip input { margin: 0; accent-color: var(--navy); }
@@ -253,7 +294,7 @@
     <!-- 3 PRODUCTS -->
     <section class="panel" id="panel-products" data-panel="products">
       <h2>3. Products</h2>
-      <p class="hint">One card per product. Tick packaging types and units of measurement from Dropdowns (multi-select). No need to retype SKUs on a packaging sheet.</p>
+      <p class="hint">Catalog items with multi-select HS / UoM / packaging. Add new values in the dropdown — they join the LOVs.</p>
       <div class="warn-box" id="packWarn" hidden>Add packaging and UoM values under Dropdowns before assigning them to products.</div>
       <div id="productsList"></div>
       <button type="button" class="sec" id="addProduct">+ Add product</button>
@@ -716,14 +757,113 @@
     return normalizePackList(h || []);
   }
 
-  function chipGrid(options, selected, dataAttr) {
-    if (!options.length) return '<span class="meta">Add values under Dropdowns first</span>';
-    return options.map(function (val) {
-      var on = selected.indexOf(val) >= 0;
-      return '<label class="chip' + (on ? " on" : "") + '">' +
-        '<input type="checkbox" data-' + dataAttr + '="' + esc(val) + '"' + (on ? " checked" : "") + " />" +
-        esc(val) + "</label>";
-    }).join("");
+  function multiSelectHtml(options, selected, mselKey, placeholder, addPlaceholder) {
+    var tags = selected.length
+      ? '<span class="msel-tags">' + selected.map(function (v) {
+          return '<span class="msel-tag">' + esc(v) +
+            '<button type="button" data-msel-remove="' + esc(v) + '" aria-label="Remove">×</button></span>';
+        }).join("") + "</span>"
+      : '<span class="ph">' + esc(placeholder || "Select…") + "</span>";
+    var opts = options.length
+      ? options.map(function (val) {
+          var on = selected.indexOf(val) >= 0;
+          return '<label class="msel-opt"><input type="checkbox" data-msel-opt="' + esc(val) + '"' +
+            (on ? " checked" : "") + " />" + esc(val) + "</label>";
+        }).join("")
+      : '<div class="msel-opt" style="color:var(--muted)">No options yet — add below</div>';
+    return '<div class="msel" data-msel="' + esc(mselKey) + '">' +
+      '<button type="button" class="msel-toggle" data-msel-toggle>' + tags + "</button>" +
+      '<div class="msel-panel">' + opts +
+      '<div class="msel-add"><input data-msel-new placeholder="' + esc(addPlaceholder || "Add new…") + '" />' +
+      '<button type="button" class="sec" data-msel-add>Add</button></div></div></div>';
+  }
+
+  function mselToggleHtml(selected, placeholder) {
+    if (!selected.length) return '<span class="ph">' + esc(placeholder || "Select…") + "</span>";
+    return '<span class="msel-tags">' + selected.map(function (v) {
+      return '<span class="msel-tag">' + esc(v) +
+        '<button type="button" data-msel-remove="' + esc(v) + '" aria-label="Remove">×</button></span>';
+    }).join("") + "</span>";
+  }
+
+  function bindMultiSelect(card, mselKey, getList, setList, lovKey, placeholder, onAddRerender, onChangeRerender) {
+    var root = card.querySelector('[data-msel="' + mselKey + '"]');
+    if (!root) return;
+    var toggle = $("[data-msel-toggle]", root);
+    var panel = $(".msel-panel", root);
+
+    function refreshToggle() {
+      if (!toggle) return;
+      toggle.innerHTML = mselToggleHtml(getList(), placeholder);
+      $all("[data-msel-remove]", toggle).forEach(function (btn) {
+        btn.addEventListener("click", onRemove);
+      });
+    }
+
+    function onRemove(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var val = e.currentTarget.getAttribute("data-msel-remove");
+      setList(getList().filter(function (v) { return v !== val; }));
+      $all("[data-msel-opt]", root).forEach(function (el) {
+        if (el.getAttribute("data-msel-opt") === val) el.checked = false;
+      });
+      scheduleSave();
+      if (onChangeRerender) onChangeRerender();
+      else refreshToggle();
+    }
+
+    function open() {
+      $all(".msel.open").forEach(function (el) {
+        if (el !== root) el.classList.remove("open");
+      });
+      root.classList.add("open");
+    }
+
+    if (toggle) {
+      toggle.addEventListener("click", function (e) {
+        if (e.target && e.target.closest && e.target.closest("[data-msel-remove]")) return;
+        e.preventDefault();
+        if (root.classList.contains("open")) root.classList.remove("open");
+        else open();
+      });
+      $all("[data-msel-remove]", toggle).forEach(function (btn) {
+        btn.addEventListener("click", onRemove);
+      });
+    }
+
+    $all("[data-msel-opt]", root).forEach(function (cb) {
+      cb.addEventListener("change", function () {
+        var val = cb.getAttribute("data-msel-opt");
+        var list = getList().slice();
+        var ix = list.indexOf(val);
+        if (cb.checked && ix < 0) list.push(val);
+        if (!cb.checked && ix >= 0) list.splice(ix, 1);
+        setList(list);
+        scheduleSave();
+        if (onChangeRerender) onChangeRerender();
+        else refreshToggle();
+      });
+    });
+
+    var addBtn = $("[data-msel-add]", root);
+    if (addBtn) {
+      addBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var inp = $("[data-msel-new]", root);
+        var val = lovKey ? ensureLov(lovKey, inp && inp.value) : String((inp && inp.value) || "").trim();
+        if (!val) return;
+        var list = getList().slice();
+        if (list.indexOf(val) < 0) list.push(val);
+        setList(list);
+        scheduleSave();
+        if (onAddRerender) onAddRerender();
+        else refreshToggle();
+      });
+    }
+
+    if (panel) panel.addEventListener("mousedown", function (e) { e.stopPropagation(); });
   }
 
   /* ---------- Products ---------- */
@@ -741,28 +881,23 @@
       var hsSel = productHs(p);
       return '<div class="row-card" data-prod-i="' + i + '">' +
         '<header><div><strong>' + esc(p.name || "Untitled product") + '</strong>' +
-        '<div class="meta">' + esc(p.sku || "no sku") +
-        (hsSel.length ? " · HS " + esc(hsSel.join(", ")) : "") + "</div></div>" +
+        '<div class="meta">' + esc(p.sku || "no sku") + "</div></div>" +
         '<button type="button" class="danger" data-del-prod="' + i + '">Remove</button></header>' +
         '<div class="grid">' +
         '<label class="field">SKU / id<span class="why">from your current systems</span>' +
         '<input data-pf="sku" value="' + esc(p.sku) + '" /></label>' +
-        '<label class="field full">Product name / description<input data-pf="name" value="' + esc(p.name) + '" /></label>' +
+        '<label class="field">Product name / description<input data-pf="name" value="' + esc(p.name) + '" /></label>' +
         '<label class="field full">Notes<input data-pf="notes" value="' + esc(p.notes || "") + '" /></label>' +
-        '</div>' +
-        '<label class="field" style="margin-top:10px">HS / HTS codes' +
-        '<span class="why">Select all codes relevant to this product — or add a new code (it joins the HS codes LOV)</span></label>' +
-        '<div class="chip-grid">' + chipGrid(hsList, hsSel, "hs") + "</div>" +
-        '<div class="add-inline"><input data-new-hs placeholder="Add HS code (e.g. 2501.0090)" /><button type="button" class="sec" data-add-hs>Add</button></div>' +
-        '<label class="field" style="margin-top:10px">Unit of measurement' +
-        '<span class="why">Multi-select from LOV — or add a new value below (it joins the UoM dropdown list)</span></label>' +
-        '<div class="chip-grid">' + chipGrid(uoms, productUoms(p), "uom") + "</div>" +
-        '<div class="add-inline"><input data-new-uom placeholder="Add new UoM (e.g. MT)" /><button type="button" class="sec" data-add-uom>Add</button></div>' +
-        '<label class="field" style="margin-top:10px">Packaging types for this product' +
-        '<span class="why">Select all that apply — or add a new type (it joins the Packaging LOV)</span></label>' +
-        '<div class="chip-grid">' + chipGrid(packs, productPacks(p), "pack") + "</div>" +
-        '<div class="add-inline"><input data-new-pack placeholder="Add new packaging (e.g. 10 kg bags)" /><button type="button" class="sec" data-add-pack>Add</button></div>' +
-        "</div>";
+        '<label class="field">HS / HTS codes' +
+        multiSelectHtml(hsList, hsSel, "hs", "Select HS codes…", "Add HS code") +
+        "</label>" +
+        '<label class="field">Unit of measurement' +
+        multiSelectHtml(uoms, productUoms(p), "uom", "Select UoM…", "Add UoM") +
+        "</label>" +
+        '<label class="field full">Packaging types' +
+        multiSelectHtml(packs, productPacks(p), "pack", "Select packaging…", "Add packaging") +
+        "</label>" +
+        "</div></div>";
     }).join("");
 
     $all("[data-del-prod]", root).forEach(function (btn) {
@@ -793,8 +928,6 @@
                 delete c.productPackaging[oldSku];
               }
             });
-            var title = $("header strong", card);
-            if (title && f === "name") title.textContent = inp.value || "Untitled product";
           }
           if (f === "name") {
             var t = $("header strong", card);
@@ -803,40 +936,28 @@
           scheduleSave();
         });
       });
-      function bindMulti(attr, field, cleanup) {
-        $all("[data-" + attr + "]", card).forEach(function (cb) {
-          cb.addEventListener("change", function () {
-            var val = cb.getAttribute("data-" + attr);
-            var list = state.products[i][field] || (state.products[i][field] = []);
-            var ix = list.indexOf(val);
-            if (cb.checked && ix < 0) list.push(val);
-            if (!cb.checked && ix >= 0) list.splice(ix, 1);
-            if (cleanup) cleanup(state.products[i]);
-            cb.closest(".chip").classList.toggle("on", cb.checked);
-            scheduleSave();
-          });
-        });
-      }
-      bindMulti("pack", "packaging", function (p) { delete p.packagingCodes; });
-      bindMulti("uom", "uoms", function (p) { delete p.uom; });
-      bindMulti("hs", "hsCodes", function (p) { delete p.hsCode; });
 
-      function bindAdd(btnSel, inpSel, lovKey, field, cleanup) {
-        var btn = $(btnSel, card);
-        if (!btn) return;
-        btn.addEventListener("click", function () {
-          var inp = $(inpSel, card);
-          var val = ensureLov(lovKey, inp && inp.value);
-          if (!val) return;
-          var list = state.products[i][field] || (state.products[i][field] = []);
-          if (list.indexOf(val) < 0) list.push(val);
-          if (cleanup) cleanup(state.products[i]);
-          renderProducts(); scheduleSave();
-        });
-      }
-      bindAdd("[data-add-pack]", "[data-new-pack]", "packaging", "packaging", function (p) { delete p.packagingCodes; });
-      bindAdd("[data-add-uom]", "[data-new-uom]", "uom", "uoms", function (p) { delete p.uom; });
-      bindAdd("[data-add-hs]", "[data-new-hs]", "hs_codes", "hsCodes", function (p) { delete p.hsCode; });
+      bindMultiSelect(card, "hs",
+        function () { return productHs(state.products[i]); },
+        function (list) {
+          state.products[i].hsCodes = list;
+          delete state.products[i].hsCode;
+        },
+        "hs_codes", "Select HS codes…", renderProducts, null);
+      bindMultiSelect(card, "uom",
+        function () { return productUoms(state.products[i]); },
+        function (list) {
+          state.products[i].uoms = list;
+          delete state.products[i].uom;
+        },
+        "uom", "Select UoM…", renderProducts, null);
+      bindMultiSelect(card, "pack",
+        function () { return productPacks(state.products[i]); },
+        function (list) {
+          state.products[i].packaging = list;
+          delete state.products[i].packagingCodes;
+        },
+        "packaging", "Select packaging…", renderProducts, null);
     });
   }
 
@@ -862,36 +983,30 @@
     var pods = state.lovs.port_of_destination || [];
 
     root.innerHTML = state.customers.map(function (c, i) {
-      var prodChips = state.products.map(function (p) {
-        if (!p.sku) return "";
-        var on = (c.productSkus || []).indexOf(p.sku) >= 0;
-        var label = String(p.name || "").trim() || "Untitled product";
-        return '<label class="chip' + (on ? " on" : "") + '">' +
-          '<input type="checkbox" data-cprod="' + esc(p.sku) + '"' + (on ? " checked" : "") + " />" +
-          esc(label) + "</label>";
-      }).join("") || '<span class="meta">Add products in step 3 first</span>';
+      var prodOpts = state.products.filter(function (p) { return !!p.sku; }).map(function (p) {
+        return String(p.name || "").trim() || "Untitled product";
+      });
+      // Map display name → sku (first match); store productSkus still by sku
+      var selectedNames = (c.productSkus || []).map(function (sku) {
+        var p = state.products.find(function (x) { return x.sku === sku; });
+        return p ? (String(p.name || "").trim() || "Untitled product") : sku;
+      });
 
       var packBlocks = (c.productSkus || []).map(function (sku) {
         var prod = state.products.find(function (p) { return p.sku === sku; });
         if (!prod) return "";
         var allowed = productPacks(prod);
+        // Options = product packs ∪ packaging LOV so they can add freely
+        var packOpts = packagingOptions().slice();
+        allowed.forEach(function (v) {
+          if (packOpts.indexOf(v) < 0) packOpts.push(v);
+        });
         var restricted = c.productPackaging && c.productPackaging[sku];
         var selected = restricted || allowed.slice();
-        var chips = allowed.length
-          ? allowed.map(function (val) {
-              var on = selected.indexOf(val) >= 0;
-              return '<label class="chip' + (on ? " on" : "") + '">' +
-                '<input type="checkbox" data-cpack-sku="' + esc(sku) + '" data-cpack="' + esc(val) + '"' +
-                (on ? " checked" : "") + " />" + esc(val) + "</label>";
-            }).join("")
-          : '<span class="meta">No packaging on this product yet — add below</span>';
         var prodLabel = String(prod.name || "").trim() || "Untitled product";
-        return '<div style="margin-top:10px" data-cust-pack-sku="' + esc(sku) + '">' +
-          '<label class="field">Packaging for <em>' + esc(prodLabel) + '</em>' +
-          '<span class="why">Untick packs this customer never uses. Add a new type to update the Packaging LOV + this product.</span></label>' +
-          '<div class="chip-grid">' + chips + "</div>" +
-          '<div class="add-inline"><input data-new-cpack placeholder="Add packaging for this product" />' +
-          '<button type="button" class="sec" data-add-cpack="' + esc(sku) + '">Add</button></div></div>';
+        return '<label class="field full" style="margin-top:6px" data-cust-pack-sku="' + esc(sku) + '">Packaging — ' + esc(prodLabel) +
+          multiSelectHtml(packOpts, selected, "cpack-" + sku, "Select packaging…", "Add packaging") +
+          "</label>";
       }).join("");
 
       return '<div class="row-card" data-cust-i="' + i + '">' +
@@ -914,17 +1029,14 @@
         '<label class="field">Default port of destination<select data-cf="defaultPortOfDestination">' +
         '<option value="">—</option>' + optionHtml(pods, c.defaultPortOfDestination) +
         "</select></label>" +
-        "</div>" +
-        '<div class="add-inline" style="margin-top:8px">' +
-        '<input data-new-pod placeholder="Or add a new port of destination" />' +
-        '<button type="button" class="sec" data-add-pod>Add port</button></div>' +
-        '<label class="field" style="margin-top:12px">Products this customer buys</label>' +
-        '<div class="chip-grid">' + prodChips + "</div>" +
-        '<div class="add-inline" style="margin-top:8px">' +
-        '<input data-new-prod-name placeholder="New product name" />' +
-        '<button type="button" class="sec" data-add-prod>Add product</button></div>' +
+        '<label class="field full">Or add a new port' +
+        '<div class="add-inline"><input data-new-pod placeholder="New port of destination" />' +
+        '<button type="button" class="sec" data-add-pod>Add</button></div></label>' +
+        '<label class="field full">Products this customer buys' +
+        multiSelectHtml(prodOpts, selectedNames, "cprods", "Select products…", "Type new product name") +
+        "</label>" +
         packBlocks +
-        "</div>";
+        "</div></div>";
     }).join("");
 
     $all("[data-del-cust]", root).forEach(function (btn) {
@@ -953,40 +1065,6 @@
         if (el.tagName === "INPUT") el.addEventListener("input", handler);
       });
 
-      $all("[data-cprod]", card).forEach(function (cb) {
-        cb.addEventListener("change", function () {
-          var sku = cb.getAttribute("data-cprod");
-          c.productSkus = c.productSkus || [];
-          var ix = c.productSkus.indexOf(sku);
-          if (cb.checked && ix < 0) c.productSkus.push(sku);
-          if (!cb.checked && ix >= 0) {
-            c.productSkus.splice(ix, 1);
-            if (c.productPackaging) delete c.productPackaging[sku];
-          }
-          renderCustomers();
-          scheduleSave();
-        });
-      });
-
-      $all("[data-cpack]", card).forEach(function (cb) {
-        cb.addEventListener("change", function () {
-          var sku = cb.getAttribute("data-cpack-sku");
-          var val = cb.getAttribute("data-cpack");
-          var prod = state.products.find(function (p) { return p.sku === sku; });
-          var allowed = prod ? productPacks(prod) : [];
-          c.productPackaging = c.productPackaging || {};
-          var cur = (c.productPackaging[sku] || allowed).slice();
-          var ix = cur.indexOf(val);
-          if (cb.checked && ix < 0) cur.push(val);
-          if (!cb.checked && ix >= 0) cur.splice(ix, 1);
-          var same = cur.length === allowed.length && allowed.every(function (a) { return cur.indexOf(a) >= 0; });
-          if (same) delete c.productPackaging[sku];
-          else c.productPackaging[sku] = cur;
-          cb.closest(".chip").classList.toggle("on", cb.checked);
-          scheduleSave();
-        });
-      });
-
       var addPodBtn = $("[data-add-pod]", card);
       if (addPodBtn) {
         addPodBtn.addEventListener("click", function () {
@@ -998,45 +1076,62 @@
         });
       }
 
-      var addProdBtn = $("[data-add-prod]", card);
-      if (addProdBtn) {
-        addProdBtn.addEventListener("click", function () {
-          var nameInp = $("[data-new-prod-name]", card);
-          var name = String((nameInp && nameInp.value) || "").trim();
-          if (!name) return;
-          var sku = uid("sku").toUpperCase().replace("SKU-", "AH-");
-          state.products.push({
-            sku: sku,
-            name: name,
-            hsCodes: [],
-            uoms: [],
-            packaging: [],
-            notes: ""
-          });
-          c.productSkus = c.productSkus || [];
-          if (c.productSkus.indexOf(sku) < 0) c.productSkus.push(sku);
-          renderCustomers(); scheduleSave();
+      function skuForName(name) {
+        var p = state.products.find(function (x) {
+          return (String(x.name || "").trim() || "Untitled product") === name;
         });
+        return p ? p.sku : null;
       }
 
-      $all("[data-add-cpack]", card).forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          var sku = btn.getAttribute("data-add-cpack");
-          var wrap = btn.closest("[data-cust-pack-sku]");
-          var inp = wrap && $("[data-new-cpack]", wrap);
-          var val = ensureLov("packaging", inp && inp.value);
-          if (!val) return;
-          var prod = state.products.find(function (p) { return p.sku === sku; });
-          if (!prod) return;
-          prod.packaging = productPacks(prod);
-          if (prod.packaging.indexOf(val) < 0) prod.packaging.push(val);
-          delete prod.packagingCodes;
-          // Keep customer restriction in sync if they had narrowed packs
-          if (c.productPackaging && c.productPackaging[sku]) {
-            if (c.productPackaging[sku].indexOf(val) < 0) c.productPackaging[sku].push(val);
-          }
-          renderCustomers(); scheduleSave();
-        });
+      bindMultiSelect(card, "cprods",
+        function () {
+          return (c.productSkus || []).map(function (sku) {
+            var p = state.products.find(function (x) { return x.sku === sku; });
+            return p ? (String(p.name || "").trim() || "Untitled product") : sku;
+          });
+        },
+        function (names) {
+          var nextSkus = [];
+          names.forEach(function (name) {
+            var sku = skuForName(name);
+            if (!sku) {
+              sku = uid("sku").toUpperCase().replace("SKU-", "AH-");
+              state.products.push({
+                sku: sku, name: name, hsCodes: [], uoms: [], packaging: [], notes: ""
+              });
+            }
+            nextSkus.push(sku);
+          });
+          Object.keys(c.productPackaging || {}).forEach(function (sku) {
+            if (nextSkus.indexOf(sku) < 0) delete c.productPackaging[sku];
+          });
+          c.productSkus = nextSkus;
+        },
+        null, "Select products…", renderCustomers, renderCustomers);
+
+      (c.productSkus || []).forEach(function (sku) {
+        var prod = state.products.find(function (p) { return p.sku === sku; });
+        if (!prod) return;
+        bindMultiSelect(card, "cpack-" + sku,
+          function () {
+            var allowed = productPacks(prod);
+            return (c.productPackaging && c.productPackaging[sku])
+              ? c.productPackaging[sku].slice()
+              : allowed.slice();
+          },
+          function (list) {
+            list.forEach(function (v) {
+              prod.packaging = productPacks(prod);
+              if (prod.packaging.indexOf(v) < 0) prod.packaging.push(v);
+            });
+            delete prod.packagingCodes;
+            var full = productPacks(prod);
+            var same = list.length === full.length && full.every(function (a) { return list.indexOf(a) >= 0; });
+            c.productPackaging = c.productPackaging || {};
+            if (same) delete c.productPackaging[sku];
+            else c.productPackaging[sku] = list;
+          },
+          "packaging", "Select packaging…", renderCustomers, null);
       });
     });
   }
@@ -1252,6 +1347,11 @@
     renderCustomers();
     renderForwarders();
     renderSamples();
+
+    document.addEventListener("mousedown", function (e) {
+      if (e.target && e.target.closest && e.target.closest(".msel")) return;
+      $all(".msel.open").forEach(function (el) { el.classList.remove("open"); });
+    });
 
     $all(".steps button").forEach(function (btn) {
       btn.addEventListener("click", function () {
