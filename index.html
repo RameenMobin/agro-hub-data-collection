@@ -82,108 +82,126 @@
     }
     .panel {
       display: none; background: var(--card); border: 1px solid var(--line);
-      border-radius: var(--radius); padding: 20px 22px 24px; box-shadow: var(--shadow);
+      border-radius: var(--radius); padding: 14px 16px 16px; box-shadow: var(--shadow);
     }
     .panel.active { display: block; }
     .panel h2 {
       font: 500 11px "IBM Plex Mono", monospace; letter-spacing: 0.12em;
-      text-transform: uppercase; color: var(--navy); margin: 0 0 6px;
-      padding-bottom: 6px; border-bottom: 1px solid var(--line);
+      text-transform: uppercase; color: var(--navy); margin: 0 0 4px;
+      padding-bottom: 4px; border-bottom: 1px solid var(--line);
     }
     .panel h3 {
-      font: 600 15px "Inter Tight", sans-serif; color: var(--ink); margin: 18px 0 8px;
+      font: 600 14px "Inter Tight", sans-serif; color: var(--ink); margin: 12px 0 6px;
     }
-    .hint { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+    .hint { color: var(--muted); font-size: 12.5px; margin: 0 0 10px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
     .grid .full { grid-column: 1 / -1; }
     label.field {
-      display: flex; flex-direction: column; gap: 3px;
-      font-size: 12px; font-weight: 600; color: var(--ink);
+      display: flex; flex-direction: column; gap: 2px;
+      font-size: 11.5px; font-weight: 600; color: var(--ink);
+      min-width: 0;
     }
-    label.field .why { font-weight: 400; color: var(--muted); font-size: 11px; }
+    label.field .lbl { line-height: 1.25; }
+    label.field .why {
+      font-weight: 400; color: var(--muted); font-size: 10.5px;
+      margin-left: 4px;
+    }
     input, select, textarea {
-      font: inherit; color: var(--body);
-      border: 1px solid var(--line); border-radius: 7px;
-      padding: 6px 9px; background: #fff;
+      font: inherit; font-weight: 400; color: var(--body);
+      border: 1px solid var(--line); border-radius: 6px;
+      padding: 5px 8px; background: #fff; line-height: 1.3;
+      height: 32px;
     }
     input:focus, select:focus, textarea:focus {
       outline: 2px solid rgba(54, 187, 201, 0.35); border-color: var(--cyan);
     }
-    textarea { min-height: 52px; resize: vertical; }
+    textarea { min-height: 40px; height: auto; resize: vertical; }
+    button.danger {
+      padding: 4px 8px; font-size: 12px; border-radius: 6px;
+    }
+    button.sec { padding: 5px 10px; font-size: 12px; }
     .row-card {
-      border: 1px solid var(--line); border-radius: 10px;
-      padding: 12px 12px 10px; margin: 0 0 10px; background: #fafcfe;
+      border: 1px solid var(--line); border-radius: 8px;
+      padding: 10px; margin: 0 0 8px; background: #fafcfe;
     }
     .row-card header {
       display: flex; justify-content: space-between; align-items: center;
-      gap: 10px; margin-bottom: 8px;
+      gap: 8px; margin-bottom: 6px;
     }
-    .row-card header strong { color: var(--ink); font-size: 13.5px; }
-    .row-card header .meta { font-size: 11.5px; color: var(--muted); }
-    .row-card .grid { gap: 8px 12px; }
-    .msel { position: relative; margin-top: 2px; }
+    .row-card header strong { color: var(--ink); font-size: 13px; }
+    .row-card header .meta { font-size: 11px; color: var(--muted); }
+    .row-card .grid { gap: 6px 10px; }
+    .msel { position: relative; margin-top: 0; }
     .msel-toggle {
       width: 100%; text-align: left; font: inherit; font-weight: 400;
       background: #fff; color: var(--body); border: 1px solid var(--line);
-      border-radius: 7px; padding: 6px 32px 6px 9px; cursor: pointer;
-      position: relative; min-height: 34px;
+      border-radius: 6px; padding: 4px 28px 4px 8px; cursor: pointer;
+      position: relative; min-height: 32px; line-height: 1.3;
     }
     .msel-toggle::after {
-      content: ""; position: absolute; right: 12px; top: 50%;
-      width: 6px; height: 6px; border-right: 1.5px solid var(--muted);
+      content: ""; position: absolute; right: 10px; top: 50%;
+      width: 5px; height: 5px; border-right: 1.5px solid var(--muted);
       border-bottom: 1.5px solid var(--muted); transform: translateY(-60%) rotate(45deg);
     }
-    .msel-toggle .ph { color: var(--muted); }
-    .msel-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .msel-toggle .ph { color: var(--muted); font-size: 12.5px; }
+    .msel-tags { display: flex; flex-wrap: wrap; gap: 3px; }
     .msel-tag {
-      display: inline-flex; align-items: center; gap: 4px;
+      display: inline-flex; align-items: center; gap: 3px;
       background: #eefbfc; border: 1px solid #b7e6ec; color: var(--ink);
-      border-radius: 999px; padding: 1px 8px; font-size: 12px; max-width: 100%;
+      border-radius: 999px; padding: 0 6px; font-size: 11px; max-width: 100%;
+      height: 20px;
     }
     .msel-tag button {
       border: 0; background: transparent; color: var(--muted);
-      padding: 0; font-size: 14px; line-height: 1; cursor: pointer;
+      padding: 0; font-size: 13px; line-height: 1; cursor: pointer;
     }
     .msel-panel {
-      display: none; position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 4px);
+      display: none; position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 3px);
       background: #fff; border: 1px solid var(--line); border-radius: 8px;
-      box-shadow: 0 10px 28px rgba(7, 35, 56, 0.12); padding: 6px; max-height: 220px;
+      box-shadow: 0 10px 28px rgba(7, 35, 56, 0.12); padding: 4px; max-height: 200px;
       overflow: auto;
     }
     .msel.open .msel-panel { display: block; }
     .msel-opt {
-      display: flex; align-items: center; gap: 8px;
-      padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 400;
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 6px; border-radius: 5px; cursor: pointer; font-size: 12.5px; font-weight: 400;
     }
     .msel-opt:hover { background: var(--soft); }
-    .msel-opt input { margin: 0; accent-color: var(--navy); }
+    .msel-opt input { margin: 0; accent-color: var(--navy); height: auto; }
     .msel-add {
-      display: grid; grid-template-columns: 1fr auto; gap: 6px;
-      padding: 6px 4px 2px; border-top: 1px solid var(--line); margin-top: 4px;
+      display: grid; grid-template-columns: 1fr auto; gap: 4px;
+      padding: 4px 2px 2px; border-top: 1px solid var(--line); margin-top: 2px;
     }
-    .msel-add input { padding: 5px 8px; font-size: 12.5px; }
-    .msel-add button { padding: 5px 10px; font-size: 12px; }
-    .chip-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .msel-add input { padding: 4px 6px; font-size: 12px; height: 28px; }
+    .msel-add button { padding: 4px 8px; font-size: 11.5px; }
+    .chip-grid { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
     .chip {
-      display: inline-flex; align-items: center; gap: 5px;
+      display: inline-flex; align-items: center; gap: 4px;
       border: 1px solid var(--line); background: #fff;
-      border-radius: 8px; padding: 4px 8px; font-size: 12.5px; cursor: pointer;
+      border-radius: 6px; padding: 3px 7px; font-size: 12px; cursor: pointer;
       user-select: none;
     }
-    .chip input { margin: 0; accent-color: var(--navy); }
+    .chip input { margin: 0; accent-color: var(--navy); height: auto; }
     .chip.on { border-color: var(--cyan); background: #eefbfc; }
     .lov-block {
-      border: 1px solid var(--line); border-radius: 10px;
-      padding: 12px 14px; margin: 0 0 12px; background: #fff;
+      border: 1px solid var(--line); border-radius: 8px;
+      padding: 8px 10px; margin: 0 0 8px; background: #fff;
     }
     .lov-block h4 {
-      margin: 0 0 8px; font: 600 13.5px "Inter Tight", sans-serif; color: var(--ink);
+      margin: 0 0 6px; font: 600 12.5px "Inter Tight", sans-serif; color: var(--ink);
     }
-    .lov-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+    .lov-list {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+      margin-bottom: 6px;
+    }
     .lov-row {
-      display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
+      display: grid; grid-template-columns: 1fr auto; gap: 4px; align-items: center;
     }
-    .lov-row input { width: 100%; }
+    .lov-row input { width: 100%; height: 28px; padding: 3px 7px; font-size: 12.5px; }
+    .lov-row .danger { padding: 2px 7px; font-size: 12px; }
+    @media (max-width: 700px) {
+      .lov-list { grid-template-columns: 1fr; }
+    }
     .nav-footer {
       display: flex; justify-content: space-between; gap: 10px;
       margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line);
@@ -210,13 +228,14 @@
       border: 1px dashed var(--line); border-radius: 8px; text-align: center;
     }
     .add-inline {
-      display: grid; grid-template-columns: 1fr auto; gap: 8px;
-      margin-top: 8px; align-items: center;
+      display: grid; grid-template-columns: 1fr auto; gap: 4px;
+      margin-top: 4px; align-items: center;
     }
     .add-inline input { width: 100%; }
     .add-inline.stack { grid-template-columns: 1fr 1fr auto; }
     @media (max-width: 700px) {
       .add-inline.stack { grid-template-columns: 1fr; }
+      .lov-list { grid-template-columns: 1fr; }
     }
     .warn-box {
       background: var(--warn-soft); border-left: 3px solid var(--warn);
@@ -672,10 +691,11 @@
       var rows = normalizeLovList(state.lovs[m.key]);
       state.lovs[m.key] = rows;
       return '<div class="lov-block" data-lov="' + m.key + '">' +
-        "<h4>" + m.title + "</h4>" +
+        "<h4>" + m.title + " <span style=\"font-weight:400;color:var(--muted);font-size:11px\">" +
+        rows.length + "</span></h4>" +
         '<div class="lov-list">' + rows.map(function (val, i) {
           return '<div class="lov-row" data-i="' + i + '">' +
-            '<input placeholder="Dropdown value" data-lov-val value="' + esc(val) + '" />' +
+            '<input placeholder="Value" data-lov-val value="' + esc(val) + '" />' +
             '<button type="button" class="danger" data-del-lov="' + i + '">×</button></div>';
         }).join("") + "</div>" +
         '<button type="button" class="sec" data-add-lov="' + m.key + '">+ Add</button></div>';
@@ -884,9 +904,10 @@
         '<div class="meta">' + esc(p.sku || "no sku") + "</div></div>" +
         '<button type="button" class="danger" data-del-prod="' + i + '">Remove</button></header>' +
         '<div class="grid">' +
-        '<label class="field">SKU / id<span class="why">from your current systems</span>' +
+        '<label class="field"><span class="lbl">SKU / id<span class="why">from your current systems</span></span>' +
         '<input data-pf="sku" value="' + esc(p.sku) + '" /></label>' +
-        '<label class="field">Product name / description<input data-pf="name" value="' + esc(p.name) + '" /></label>' +
+        '<label class="field"><span class="lbl">Product name / description</span>' +
+        '<input data-pf="name" value="' + esc(p.name) + '" /></label>' +
         '<label class="field">HS / HTS codes' +
         multiSelectHtml(hsList, hsSel, "hs", "Select HS codes…", "Add HS code") +
         "</label>" +
@@ -1014,9 +1035,9 @@
         '<div class="meta">' + esc(c.id || "") + "</div></div>" +
         '<button type="button" class="danger" data-del-cust="' + i + '">Remove</button></header>' +
         '<div class="grid">' +
-        '<label class="field">Customer id<span class="why">from your current systems</span>' +
+        '<label class="field"><span class="lbl">Customer id<span class="why">from your current systems</span></span>' +
         '<input data-cf="id" value="' + esc(c.id) + '" /></label>' +
-        '<label class="field">Name<input data-cf="name" value="' + esc(c.name) + '" /></label>' +
+        '<label class="field"><span class="lbl">Name</span><input data-cf="name" value="' + esc(c.name) + '" /></label>' +
         '<label class="field full">Street<input data-cf="addressStreet" value="' + esc(c.addressStreet) + '" /></label>' +
         '<label class="field">City<input data-cf="addressCity" value="' + esc(c.addressCity) + '" /></label>' +
         '<label class="field">Postal / zip<input data-cf="addressPostalCode" value="' + esc(c.addressPostalCode) + '" /></label>' +
@@ -1148,9 +1169,9 @@
         '<header><strong>' + esc(f.name || "Forwarder") + '</strong>' +
         '<button type="button" class="danger" data-del-fwd="' + i + '">Remove</button></header>' +
         '<div class="grid">' +
-        '<label class="field">Id<span class="why">from your current systems</span>' +
+        '<label class="field"><span class="lbl">Id<span class="why">from your current systems</span></span>' +
         '<input data-ff="id" value="' + esc(f.id) + '" /></label>' +
-        '<label class="field">Name<input data-ff="name" value="' + esc(f.name) + '" /></label>' +
+        '<label class="field"><span class="lbl">Name</span><input data-ff="name" value="' + esc(f.name) + '" /></label>' +
         '<label class="field">Email<input data-ff="email" value="' + esc(f.email) + '" /></label>' +
         '<label class="field">Phone<input data-ff="phone" value="' + esc(f.phone || "") + '" /></label>' +
         '<label class="field">BL path<select data-ff="blPath">' +
