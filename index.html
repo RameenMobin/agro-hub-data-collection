@@ -887,7 +887,6 @@
         '<label class="field">SKU / id<span class="why">from your current systems</span>' +
         '<input data-pf="sku" value="' + esc(p.sku) + '" /></label>' +
         '<label class="field">Product name / description<input data-pf="name" value="' + esc(p.name) + '" /></label>' +
-        '<label class="field full">Notes<input data-pf="notes" value="' + esc(p.notes || "") + '" /></label>' +
         '<label class="field">HS / HTS codes' +
         multiSelectHtml(hsList, hsSel, "hs", "Select HS codes…", "Add HS code") +
         "</label>" +
@@ -897,6 +896,7 @@
         '<label class="field full">Packaging types' +
         multiSelectHtml(packs, productPacks(p), "pack", "Select packaging…", "Add packaging") +
         "</label>" +
+        '<label class="field full">Notes<input data-pf="notes" value="' + esc(p.notes || "") + '" /></label>' +
         "</div></div>";
     }).join("");
 
