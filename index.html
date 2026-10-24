@@ -147,27 +147,33 @@
       .contact-row .field { grid-column: 1 / -1; }
     }
     .csel { position: relative; }
-    .csel-input {
-      width: 100%; font: inherit; font-weight: 400; color: var(--body);
-      border: 1px solid var(--line); border-radius: 6px;
-      padding: 5px 28px 5px 8px; background: #fff; height: 32px;
+    .csel-toggle {
+      width: 100%; text-align: left; font: inherit; font-weight: 400;
+      background: #fff; color: var(--body); border: 1px solid var(--line);
+      border-radius: 6px; padding: 4px 28px 4px 8px; cursor: pointer;
+      position: relative; min-height: 32px; line-height: 1.3;
     }
-    .csel-input:focus {
-      outline: 2px solid rgba(54, 187, 201, 0.35); border-color: var(--cyan);
-    }
-    .csel::after {
+    .csel-toggle::after {
       content: ""; position: absolute; right: 10px; top: 50%;
       width: 5px; height: 5px; border-right: 1.5px solid var(--muted);
       border-bottom: 1.5px solid var(--muted); transform: translateY(-60%) rotate(45deg);
-      pointer-events: none;
     }
+    .csel-toggle .ph { color: var(--muted); font-size: 12.5px; }
     .csel-panel {
       display: none; position: absolute; z-index: 45; left: 0; right: 0; top: calc(100% + 3px);
       background: #fff; border: 1px solid var(--line); border-radius: 8px;
-      box-shadow: 0 10px 28px rgba(7, 35, 56, 0.12); max-height: 220px; overflow: auto;
-      padding: 4px;
+      box-shadow: 0 10px 28px rgba(7, 35, 56, 0.12); padding: 4px;
     }
     .csel.open .csel-panel { display: block; }
+    .csel-search {
+      width: 100%; font: inherit; font-weight: 400; color: var(--body);
+      border: 1px solid var(--line); border-radius: 5px;
+      padding: 5px 8px; background: #fff; height: 30px; margin-bottom: 4px;
+    }
+    .csel-search:focus {
+      outline: 2px solid rgba(54, 187, 201, 0.35); border-color: var(--cyan);
+    }
+    .csel-list { max-height: 180px; overflow: auto; }
     .csel-opt {
       display: block; width: 100%; text-align: left; border: 0; background: transparent;
       padding: 5px 8px; border-radius: 5px; font: inherit; font-size: 12.5px; font-weight: 400;
@@ -850,27 +856,36 @@
   }
 
   function countrySelectHtml(value, key) {
-    // Avoid name/id/autocomplete tokens browsers treat as address fields
+    // Button toggle (not an address text input) — stops Chrome address autofill
+    var shown = value
+      ? '<span class="msel-tag">' + esc(value) + "</span>"
+      : '<span class="ph">Select country…</span>';
     return '<div class="csel" data-csel="' + esc(key) + '">' +
-      '<input class="csel-input" type="text" inputmode="search" ' +
-      'name="agro-csel-' + esc(key) + '" id="agro-csel-' + esc(key) + '" ' +
-      'autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" ' +
-      'data-lpignore="true" data-1p-ignore="true" data-form-type="other" ' +
-      'role="combobox" aria-autocomplete="list" aria-expanded="false" readonly ' +
-      'placeholder="Search country…" value="' + esc(value || "") + '" data-csel-input />' +
-      '<div class="csel-panel" data-csel-panel role="listbox"></div></div>';
+      '<button type="button" class="csel-toggle" data-csel-toggle aria-haspopup="listbox" aria-expanded="false">' +
+      shown + "</button>" +
+      '<div class="csel-panel" data-csel-panel>' +
+      '<input class="csel-search" type="search" data-csel-search tabindex="-1" ' +
+      'placeholder="Type to filter…" value="" ' +
+      'autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" ' +
+      'data-lpignore="true" data-1p-ignore="true" data-form-type="other" />' +
+      '<div class="csel-list" data-csel-list role="listbox"></div>' +
+      "</div></div>";
   }
 
   function bindCountrySelect(root, key, getValue, setValue) {
     var wrap = root.querySelector('[data-csel="' + key + '"]');
     if (!wrap) return;
-    var inp = $("[data-csel-input]", wrap);
+    var toggle = $("[data-csel-toggle]", wrap);
     var panel = $("[data-csel-panel]", wrap);
-    if (!inp || !panel) return;
+    var search = $("[data-csel-search]", wrap);
+    var listEl = $("[data-csel-list]", wrap);
+    if (!toggle || !panel || !search || !listEl) return;
 
-    // Chrome ignores autocomplete=off on address-ish fields; readonly-until-focus blocks its popup
-    function unlockInput() {
-      inp.removeAttribute("readonly");
+    function refreshToggle() {
+      var value = getValue() || "";
+      toggle.innerHTML = value
+        ? '<span class="msel-tag">' + esc(value) + "</span>"
+        : '<span class="ph">Select country…</span>';
     }
 
     function renderOpts(q) {
@@ -879,21 +894,22 @@
         return !query || c.toLowerCase().indexOf(query) >= 0;
       });
       if (!list.length) {
-        panel.innerHTML = '<div class="csel-empty">No match — keep typing or clear to browse</div>';
+        listEl.innerHTML = '<div class="csel-empty">No match</div>';
         return;
       }
-      panel.innerHTML = list.slice(0, 80).map(function (c) {
-        var on = c === getValue();
+      var selected = getValue() || "";
+      listEl.innerHTML = list.slice(0, 100).map(function (c) {
+        var on = c === selected;
         return '<button type="button" class="csel-opt' + (on ? " active" : "") + '" data-csel-opt="' +
           esc(c) + '">' + esc(c) + "</button>";
       }).join("");
-      $all("[data-csel-opt]", panel).forEach(function (btn) {
+      $all("[data-csel-opt]", listEl).forEach(function (btn) {
         btn.addEventListener("mousedown", function (e) {
           e.preventDefault();
           e.stopPropagation();
           var val = btn.getAttribute("data-csel-opt");
           setValue(val);
-          inp.value = val;
+          refreshToggle();
           close();
           scheduleSave();
         });
@@ -901,69 +917,51 @@
     }
 
     function open() {
-      unlockInput();
       $all(".csel.open").forEach(function (el) {
         if (el !== wrap) el.classList.remove("open");
       });
       $all(".msel.open").forEach(function (el) { el.classList.remove("open"); });
       wrap.classList.add("open");
-      inp.setAttribute("aria-expanded", "true");
-      renderOpts(inp.value);
+      toggle.setAttribute("aria-expanded", "true");
+      search.value = "";
+      renderOpts("");
+      setTimeout(function () { search.focus(); }, 0);
     }
 
     function close() {
       wrap.classList.remove("open");
-      inp.setAttribute("aria-expanded", "false");
+      toggle.setAttribute("aria-expanded", "false");
     }
 
-    inp.addEventListener("focus", function () {
-      // Delay unlock so Chrome's autofill gesture doesn't fire on the same focus
-      setTimeout(unlockInput, 30);
-      open();
+    toggle.addEventListener("click", function (e) {
+      e.preventDefault();
+      if (wrap.classList.contains("open")) close();
+      else open();
     });
-    inp.addEventListener("click", function () {
-      unlockInput();
-      open();
+
+    search.addEventListener("input", function () {
+      renderOpts(search.value);
     });
-    inp.addEventListener("input", function () {
-      // Allow free-text while searching; commit exact country on pick / blur match
-      setValue(inp.value);
-      scheduleSave();
-      open();
-      renderOpts(inp.value);
-    });
-    inp.addEventListener("keydown", function (e) {
+    search.addEventListener("keydown", function (e) {
       if (e.key === "Escape") {
+        e.preventDefault();
         close();
+        toggle.focus();
         return;
       }
       if (e.key === "Enter") {
         e.preventDefault();
-        var first = $("[data-csel-opt]", panel);
+        var first = $("[data-csel-opt]", listEl);
         if (first) {
-          var val = first.getAttribute("data-csel-opt");
-          setValue(val);
-          inp.value = val;
+          setValue(first.getAttribute("data-csel-opt"));
+          refreshToggle();
           close();
           scheduleSave();
         }
       }
     });
-    inp.addEventListener("blur", function () {
-      // Snap to closest country if exact (case-insensitive) match exists
-      var typed = String(inp.value || "").trim();
-      if (!typed) {
-        setValue("");
-        scheduleSave();
-        return;
-      }
-      var hit = COUNTRIES.find(function (c) { return c.toLowerCase() === typed.toLowerCase(); });
-      if (hit) {
-        setValue(hit);
-        inp.value = hit;
-        scheduleSave();
-      }
-    });
+    // Stop mousedown inside panel from closing via document handler
+    panel.addEventListener("mousedown", function (e) { e.stopPropagation(); });
   }
 
   /* ---------- Company ---------- */
@@ -1553,9 +1551,9 @@
         '<label class="field"><span class="lbl">Customer id<span class="why">from your current systems</span></span>' +
         '<input data-cf="id" value="' + esc(c.id) + '" /></label>' +
         '<label class="field"><span class="lbl">Name</span><input data-cf="name" value="' + esc(c.name) + '" /></label>' +
-        '<label class="field full">Street<input data-cf="addressStreet" value="' + esc(c.addressStreet) + '" /></label>' +
-        '<label class="field">City<input data-cf="addressCity" value="' + esc(c.addressCity) + '" /></label>' +
-        '<label class="field">Postal / zip<input data-cf="addressPostalCode" value="' + esc(c.addressPostalCode) + '" /></label>' +
+        '<label class="field full">Street<input data-cf="addressStreet" autocomplete="off" data-lpignore="true" value="' + esc(c.addressStreet) + '" /></label>' +
+        '<label class="field">City<input data-cf="addressCity" autocomplete="off" data-lpignore="true" value="' + esc(c.addressCity) + '" /></label>' +
+        '<label class="field">Postal / zip<input data-cf="addressPostalCode" autocomplete="off" data-lpignore="true" value="' + esc(c.addressPostalCode) + '" /></label>' +
         '<div class="field"><span class="lbl">Country</span>' + countrySelectHtml(c.addressCountry || "", "cust-country-" + i) + "</div>" +
         '<label class="field">FDA registration (importer)<input data-cf="fdaRegistrationNo" value="' + esc(c.fdaRegistrationNo || "") + '" /></label>' +
         contactsBlockHtml(c.contacts, "cust-" + i) +
