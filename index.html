@@ -388,7 +388,7 @@
     <!-- 5 FORWARDERS -->
     <section class="panel" id="panel-forwarders" data-panel="forwarders">
       <h2>5. Forwarders</h2>
-      <p class="hint">Portal (e.g. Seagold / Gama) vs manual (BL template → checking copy).</p>
+      <p class="hint">Add each forwarder you use. Mark BL path as portal or manual (BL template → checking copy).</p>
       <div id="forwardersList"></div>
       <button type="button" class="sec" id="addForwarder">+ Add forwarder</button>
       <div class="nav-footer">
@@ -531,10 +531,7 @@
       },
       products: [],
       customers: [],
-      forwarders: [
-        { id: "seagold", name: "Seagold", contacts: [{ name: "", email: "", phone: "" }], blPath: "portal", notes: "" },
-        { id: "gama", name: "Gama", contacts: [{ name: "", email: "", phone: "" }], blPath: "portal", notes: "" }
-      ],
+      forwarders: [],
       sampleChecks: { docs: {}, emails: {} }
     };
   }
