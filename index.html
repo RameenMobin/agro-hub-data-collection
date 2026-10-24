@@ -554,7 +554,22 @@
           Object.keys(c.productPackaging || {}).forEach(function (sku) {
             pp[sku] = normalizePackList(c.productPackaging[sku]);
           });
-          return Object.assign({}, c, { productPackaging: pp });
+          var ports = c.defaultPorts != null ? c.defaultPorts : c.defaultPortOfDestination;
+          if (typeof ports === "string") ports = ports ? [ports] : [];
+          ports = normalizePackList(ports || []);
+          ports.forEach(function (p) {
+            var key = String(p).trim();
+            if (!key) return;
+            state.lovs.port_of_destination = state.lovs.port_of_destination || [];
+            var exists = state.lovs.port_of_destination.some(function (v) {
+              return v.toLowerCase() === key.toLowerCase();
+            });
+            if (!exists) state.lovs.port_of_destination.push(key);
+          });
+          return Object.assign({}, c, {
+            productPackaging: pp,
+            defaultPorts: ports
+          });
         });
       }
     } catch (e) { /* ignore */ }
@@ -775,6 +790,12 @@
     var h = p.hsCodes != null ? p.hsCodes : p.hsCode;
     if (typeof h === "string") return h ? [h] : [];
     return normalizePackList(h || []);
+  }
+
+  function customerPorts(c) {
+    var p = c.defaultPorts != null ? c.defaultPorts : c.defaultPortOfDestination;
+    if (typeof p === "string") return p ? [p] : [];
+    return normalizePackList(p || []);
   }
 
   function multiSelectHtml(options, selected, mselKey, placeholder, addPlaceholder) {
@@ -1047,12 +1068,15 @@
         '<label class="field">Phone 2<input data-cf="contactPhone2" value="' + esc(c.contactPhone2 || "") + '" /></label>' +
         '<label class="field">Email 2<input data-cf="contactEmail2" value="' + esc(c.contactEmail2 || "") + '" /></label>' +
         '<label class="field">FDA registration (importer)<input data-cf="fdaRegistrationNo" value="' + esc(c.fdaRegistrationNo || "") + '" /></label>' +
-        '<label class="field">Default port of destination<select data-cf="defaultPortOfDestination">' +
-        '<option value="">—</option>' + optionHtml(pods, c.defaultPortOfDestination) +
-        "</select></label>" +
-        '<label class="field full">Or add a new port' +
-        '<div class="add-inline"><input data-new-pod placeholder="New port of destination" />' +
-        '<button type="button" class="sec" data-add-pod>Add</button></div></label>' +
+        '<label class="field full">Default port of destination' +
+        multiSelectHtml(
+          normalizeLovList(pods),
+          customerPorts(c),
+          "cpods",
+          "Select ports…",
+          "Add port"
+        ) +
+        "</label>" +
         '<label class="field full">Products this customer buys' +
         multiSelectHtml(prodOpts, selectedNames, "cprods", "Select products…", "Type new product name") +
         "</label>" +
@@ -1086,16 +1110,13 @@
         if (el.tagName === "INPUT") el.addEventListener("input", handler);
       });
 
-      var addPodBtn = $("[data-add-pod]", card);
-      if (addPodBtn) {
-        addPodBtn.addEventListener("click", function () {
-          var inp = $("[data-new-pod]", card);
-          var val = ensureLov("port_of_destination", inp && inp.value);
-          if (!val) return;
-          c.defaultPortOfDestination = val;
-          renderCustomers(); scheduleSave();
-        });
-      }
+      bindMultiSelect(card, "cpods",
+        function () { return customerPorts(c); },
+        function (list) {
+          c.defaultPorts = list;
+          c.defaultPortOfDestination = list[0] || "";
+        },
+        "port_of_destination", "Select ports…", renderCustomers, null);
 
       function skuForName(name) {
         var p = state.products.find(function (x) {
@@ -1312,7 +1333,7 @@
         contact_email: c.contactEmail,
         contact_phone_2: c.contactPhone2 || "",
         contact_email_2: c.contactEmail2 || "",
-        default_port_of_destination: c.defaultPortOfDestination,
+        default_ports_of_destination: customerPorts(c).join(" | "),
         fda_registration_no: c.fdaRegistrationNo || "",
         product_names: (c.productSkus || []).map(function (sku) {
           var p = state.products.find(function (x) { return x.sku === sku; });
@@ -1413,7 +1434,7 @@
         contactPhone2: "",
         contactEmail2: "",
         fdaRegistrationNo: "",
-        defaultPortOfDestination: "",
+        defaultPorts: [],
         productSkus: [],
         productPackaging: {}
       });
